@@ -1,4 +1,4 @@
-from payroll import tax
+from payroll import payroll_results
 
 def test_tax():
-    assert tax == 172831.35
+    assert payroll_results["net_paye"] == 172831.35
