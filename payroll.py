@@ -1,234 +1,82 @@
-from typing import Dict, List
 import pprint
+import urllib.parse
+from typing import Dict, List
+from mongoengine import connect
+import models
+import datetime
 
 
-"""
-Effective 1st July 2023
+db_user = "hummingbird_user"
+db_password = "Tm5Zt2EzWrX86sSjDq3Bc7"
+db_host = "localhost"
+db_port = 9010
+db_name = "hummingbird_payroll"
+DB_URL = f"mongodb://{urllib.parse.quote_plus(db_user)}:{urllib.parse.quote_plus(db_password)}@{db_host}:{db_port}/{db_name}?authSource=admin"
+connect(host=DB_URL)
 
-Monthly Pay Bands (Ksh.)            Annual Pay Bands (Ksh.)             Rate of Tax (%)
+# company = models.Company(name="ACME Ltd", legal_name="ACME Ltd", description="ACME Ltd", pin_number="P051234567A", nssf_number="12345678", shif_number="12345678", nita_number="12345678", contact_email="hr@acme.com", contact_phone="0712345678", address="1234 Acme Street, Acme City")
+# company.save()
 
-On the first kShs. 24,000           On the first KShs. 288,000          10
-On the next KShs. 8,333             On the next KShs.100,000            25
-On the next KShs. 467,667           On the next KShs. 5,612,000         30
-On the next KShs. 300,000           On the next KShs. 3,600,00          32.5
-On all income above KShs. 800,000   On all income above KShs. 9,600,000 35
+company = models.Company.objects.first()
 
-"""
-# PAYE bands
-paye_bands_monthly: List[Dict[float, float]] = [
-   {
-        "lower": 0.00,
-        "upper": 24_000.00,
-        "rate": 10.00
-    },
-    {
-        "lower": 24_000.00,
-        "upper": 32_333.00,
-        "rate": 25.00
-    },
-    {
-        "lower": 32_333.00,
-        "upper": 500_000.00,
-        "rate": 30.00
-    },
-    {
-        "lower": 500_000.00,
-        "upper": 800_000.00,
-        "rate": 32.50
-    },
-    {
-        "lower": 800_000.00,
-        "upper": float("inf"),
-        "rate": 35.00
-    }
-]
+# john: models.Staff = models.Staff(first_name="John", last_name="Doe", job_title="Software Engineer", department="Engineering", contact_email="john.doe@acme.com", contact_phone="0712345678", pin_number="12345678", staff_number="12345678", shif_number="12345678", nssf_number="12345678", nita_number="12345678", national_id_number="22113344", date_of_birth=datetime.datetime(1990, 1, 1), is_active=True, joined_on=datetime.datetime(2023, 1, 1), bank_account_number="12345678", bank_name="First National Bank of Utopia Republic", bank_swift_code="FNBU", bank_branch="Kingdom District", company=company)
+# john.save()
 
-# NSSF bands
-nssf_bands: List[Dict[float, float]] = [
-    {
-        "lower": 0.00,
-        "upper": 7_000.00,
-        "rate": 6.00
-    },
-    {
-        "lower": 7_000.00,
-        "upper": 36_000.00,
-        "rate": 6.00
-    }
-]
+john = models.Staff.objects.first()
 
-class Company:
-    def __init__(self):
-        self.name: str
-        self.email: str
-        self.phone: str
-        self.pin: str
-        self.paye_number: str
-        self.nssf_number: str
-        self.nhif_number: str
-        self.logo: str
+# gross_pay: models.PayrollComponent = models.PayrollComponent(company=company, name="Gross Pay", description="Gross Pay", variable="gross_pay", component_type="input", order=0, formula=None, value=None, effective_from=datetime.datetime(2023, 1, 1))
+# gross_pay.save()
+# pension_benefit: models.PayrollComponent = models.PayrollComponent(company=company, name="Pension Benefit", description="Pension Benefit", variable="pension_benefit", component_type="input", order=1, formula=None, value=None, effective_from=datetime.datetime(2023, 1, 1))
+# pension_benefit.save()
+# personal_relief_monthly: models.PayrollComponent = models.PayrollComponent(company=company, name="Personal Relief Monthly", description="Personal Relief Monthly", variable="personal_relief_monthly", component_type="fixed", order=2, formula=None, value=2_400.00, effective_from=datetime.datetime(2023, 1, 1))
+# personal_relief_monthly.save()
+# nita: models.PayrollComponent = models.PayrollComponent(company=company, name="NITA", description="NITA", variable="nita", component_type="fixed", order=3, formula=None, value=50.00, effective_from=datetime.datetime(2023, 1, 1))
+# nita.save()
+# nssf_contribution_employee: models.PayrollComponent = models.PayrollComponent(company=company, name="NSSF Contribution", description="NSSF Contribution", variable="nssf_contribution_employee", component_type="formula", order=4, formula="calculate_nssf_contribution(gross_pay)", value=None, effective_from=datetime.datetime(2023, 1, 1))
+# nssf_contribution_employee.save()
+# affordable_housing_levy: models.PayrollComponent = models.PayrollComponent(company=company, name="Affordable Housing Levy", description="Affordable Housing Levy", variable="affordable_housing_levy", component_type="formula", order=5, formula="0.015 * gross_pay", value=None, effective_from=datetime.datetime(2023, 1, 1))
+# affordable_housing_levy.save()
+# affordable_housing_relief: models.PayrollComponent = models.PayrollComponent(company=company, name="Affordable Housing Relief", description="Affordable Housing Relief", variable="affordable_housing_relief", component_type="formula", order=6, formula="0.15 * affordable_housing_levy", value=None, effective_from=datetime.datetime(2023, 1, 1))
+# affordable_housing_relief.save()
+# shif_contribution: models.PayrollComponent = models.PayrollComponent(company=company, name="SHIF Contribution", description="SHIF Contribution", variable="shif_contribution", component_type="formula", order=7, formula="0.0275 * gross_pay", value=None, effective_from=datetime.datetime(2023, 1, 1))
+# shif_contribution.save()
+# deductable_shif_contribution: models.PayrollComponent = models.PayrollComponent(company=company, name="Deductable SHIF Contribution", description="Deductable SHIF Contribution", variable="deductable_shif_contribution", component_type="formula", order=8, formula="0.15 * shif_contribution", value=None, effective_from=datetime.datetime(2023, 1, 1))
+# deductable_shif_contribution.save()
+# taxable_income: models.PayrollComponent = models.PayrollComponent(company=company, name="Taxable Income", description="Taxable Income", variable="taxable_income", component_type="formula", order=9, formula="gross_pay + pension_benefit - nssf_contribution_employee", value=None, effective_from=datetime.datetime(2023, 1, 1))
+# taxable_income.save()
+# gross_paye: models.PayrollComponent = models.PayrollComponent(company=company, name="Gross PAYE", description="Gross PAYE", variable="gross_paye", component_type="formula", order=10, formula="calculate_paye(taxable_income)", value=None, effective_from=datetime.datetime(2023, 1, 1))
+# gross_paye.save()
+# net_paye: models.PayrollComponent = models.PayrollComponent(company=company, name="Net PAYE", description="Net PAYE", variable="net_paye", component_type="formula", order=11, formula="gross_paye - personal_relief_monthly - affordable_housing_relief", value=None, effective_from=datetime.datetime(2023, 1, 1))
+# net_paye.save()
+# affordable_housing_levy_employer: models.PayrollComponent = models.PayrollComponent(company=company, name="Affordable Housing Levy Employer", description="Affordable Housing Levy Employer", variable="affordable_housing_levy_employer", component_type="formula", order=12, formula="0.015 * gross_pay", value=None, effective_from=datetime.datetime(2023, 1, 1))
+# affordable_housing_levy_employer.save()
+# nssf_contribution_employer: models.PayrollComponent = models.PayrollComponent(company=company, name="NSSF Contribution Employer", description="NSSF Contribution Employer", variable="nssf_contribution_employer", component_type="formula", order=13, formula="calculate_nssf_contribution(gross_pay)", value=None, effective_from=datetime.datetime(2023, 1, 1))
+# nssf_contribution_employer.save()
+# total_deductions: models.PayrollComponent = models.PayrollComponent(company=company, name="Total Deductions", description="Total Deductions", variable="total_deductions", component_type="formula", order=14, formula="nssf_contribution_employee + net_paye + shif_contribution + affordable_housing_levy", value=None, effective_from=datetime.datetime(2023, 1, 1))
+# total_deductions.save()
+# net_pay: models.PayrollComponent = models.PayrollComponent(company=company, name="Net Pay", description="Net Pay", variable="net_pay", component_type="formula", order=15, formula="gross_pay - total_deductions", value=None, effective_from=datetime.datetime(2023, 1, 1))
+# net_pay.save()
 
-class Staff:
-    def __init__(self):
-        self.first_name: str
-        self.last_name: str
-        self.email: str
-        self.phone: str
-        self.national_id: str
-        self.date_of_birth: str
-        self.company: Company
+payroll_components = models.PayrollComponent.objects(company=company)
 
-class PayrollComputation:
-    def __init__(self):
-        self.company: str
-        self.payroll_period_start: str
-        self.payroll_period_end: str
-        self.staff: List[Staff]
-        self.payroll_computation_components: List[PayrollComputationComponent]
-        
+# computation: models.Computation = models.Computation(company=company, notes="Jan 2023 Payroll control", payroll_period_start=datetime.datetime(2023, 1, 1), payroll_period_end=datetime.datetime(2023, 1, 31))
+# computation.save()
 
+computation = models.Computation.objects.first()
 
-class PayrollComponent:
-    def __init__(self, company: Company, name: str, description: str, variable: str, pctype: str, value: float = -1, formula: str = "", order: int = 0):
-        assert pctype in ["input", "fixed", "formula"], "Invalid payroll component type, must be either 'input', 'fixed' or 'formula'"
-        assert order >= 0
-        if pctype == "fixed":
-            assert value >= 0, "Invalid value for fixed payroll component"
-        if pctype == "formula":
-            assert formula != "", "Invalid formula for formula payroll component"
-        if pctype == "input":
-            assert value == -1, "Invalid value for input payroll component, must be -1"
-        self.company: Company = company
-        self.name: str = name
-        self.description: str = description
-        self.variable: str = name.lower().replace(" ", "_") if variable == "" else variable
-        self.type: str = pctype # input, fixed, formula
-        self.value: float = value # only applicable for fixed
-        self.formula: str = formula # only applicable for formula
-        self.order: int = order # order of computation
+compensation = {
+    "gross_pay": 600_000.00,
+    "pension_benefit": 0.00
+}
 
-    def __str__(self):
-        return f"{self.name}"
-    
-class PayrollComputationComponent:
-    def __init__(self, payroll_component: PayrollComponent, staff: Staff, payroll_computation: PayrollComputation, value: float = -1):
-        self.staff: Staff = staff
-        self.payroll_computation: PayrollComputation = payroll_computation
-        self.payroll_component: PayrollComponent = payroll_component
-        if self.payroll_component.type == "input":
-            assert value > -1, "Invalid value for input payroll component"
-            self.value: float = value
-        if self.payroll_component.type == "fixed":
-            self.value: float = self.payroll_component.value
-        
+# for ck, cv in compensation.items():
+#     computation_component = models.ComputationComponent(computation=computation, payroll_component=payroll_components.get(variable=ck), staff=john, value=cv)
+#     computation_component.save()
 
-    def calculate(self, params: Dict[str, float] = {}):
-        """
-            Calculate the value of the payroll component
-        """
-        if self.payroll_component.type == "formula":
-            self.value: float = eval(self.payroll_component.formula, globals(), params)
-        return self.value
-    
-# predefined formulae  
-def calculate_paye(taxable_income: float) -> float:
-    """
-        Calculate PAYE based on the taxable income and the PAYE bands
-    """
-    paye: float = 0.00
-    for band in paye_bands_monthly:
-        if taxable_income > band["upper"]:
-            paye += (band["upper"] - band["lower"]) * (band["rate"] / 100)
-        else:
-            paye += (taxable_income - band["lower"]) * (band["rate"] / 100)
-            break
-    return paye
+payroll_results: Dict[str, float] = {}
+for staff, payroll in computation.run():
+    print(f"{staff.first_name} {staff.last_name} Payroll")
+    pprint.pprint(payroll)
+    payroll_results: Dict[str, float] = payroll
+    break
 
-def calculate_nssf_contribution(gross_pay: float) -> float:
-    """
-        Calculate NSSF contribution based on the gross pay and the NSSF bands
-    """
-    nssf_contribution: float = 0.00
-    for band in nssf_bands:
-        if gross_pay > band["upper"]:
-            nssf_contribution += (band["upper"] - band["lower"]) * band["rate"] / 100
-        else:
-            nssf_contribution += (gross_pay - band["lower"]) * band["rate"] / 100
-            break
-    return nssf_contribution
-
-
-company: Company = Company()
-company.name = "ACME Ltd"
-company.email = "acme@acme.org"
-company.phone = "0712345678"
-company.pin = "P051234567A"
-company.paye_number = "P051234567A"
-company.nssf_number = "N051234567A"
-company.nhif_number = "NH051234567A"
-company.logo = "https://acme.org/logo.png"
-
-john: Staff = Staff()
-john.first_name = "John"
-john.last_name = "Doe"
-john.email = "john.doe@acme.org"
-john.phone = "0712345678"
-john.national_id = "12345678"
-john.date_of_birth = "01/01/1990"
-john.company = company
-
-# payroll components
-gross_pay: PayrollComponent = PayrollComponent(company, "Gross Pay", "Gross Pay", "gross_pay", "input", -1, "", 0)
-pension_benefit: PayrollComponent = PayrollComponent(company, "Pension Benefit", "Pension Benefit", "pension_benefit", "input", -1, "", 1)
-personal_relief_monthly: PayrollComponent = PayrollComponent(company, "Personal Relief Monthly", "Personal Relief Monthly", "personal_relief_monthly", "fixed", 2_400.00, "", 2)
-nita: PayrollComponent = PayrollComponent(company, "NITA", "NITA", "nita", "fixed", 50.00, "", 3)
-nssf_contribution_employee: PayrollComponent = PayrollComponent(company, "NSSF Contribution", "NSSF Contribution", "nssf_contribution_employee", "formula", -1, "calculate_nssf_contribution(gross_pay)", 4)
-affordable_housing_levy: PayrollComponent = PayrollComponent(company, "Affordable Housing Levy", "Affordable Housing Levy", "affordable_housing_levy", "formula", -1, "0.015 * gross_pay", 5)
-affordable_housing_relief: PayrollComponent = PayrollComponent(company, "Affordable Housing Relief", "Affordable Housing Relief", "affordable_housing_relief", "formula", -1, "0.15 * affordable_housing_levy", 6)
-shif_contribution: PayrollComponent = PayrollComponent(company, "SHIF Contribution", "SHIF Contribution", "shif_contribution", "formula", -1, "0.0275 * gross_pay", 7)
-deductable_shif_contribution: PayrollComponent = PayrollComponent(company, "Deductable SHIF Contribution", "Deductable SHIF Contribution", "deductable_shif_contribution", "formula", -1, "0.15 * shif_contribution", 8)
-taxable_income: PayrollComponent = PayrollComponent(company, "Taxable Income", "Taxable Income", "taxable_income", "formula", -1, "gross_pay + pension_benefit - nssf_contribution_employee", 9)
-gross_paye: PayrollComponent = PayrollComponent(company, "Gross PAYE", "Gross PAYE","gross_paye", "formula", -1, "calculate_paye(taxable_income)", 10)
-net_paye: PayrollComponent = PayrollComponent(company, "Net PAYE", "Net PAYE", "net_paye", "formula", -1, "gross_paye - personal_relief_monthly - affordable_housing_relief", 11)
-affordable_housing_levy_employer: PayrollComponent = PayrollComponent(company, "Affordable Housing Levy Employer", "Affordable Housing Levy Employer", "affordable_housing_levy_employer", "formula", -1, "0.015 * gross_pay", 12)
-nssf_contribution_employer: PayrollComponent = PayrollComponent(company, "NSSF Contribution Employer", "NSSF Contribution Employer", "nssf_contribution_employer", "formula", -1, "calculate_nssf_contribution(gross_pay)", 13)
-total_deductions: PayrollComponent = PayrollComponent(company, "Total Deductions", "Total Deductions", "total_deductions", "formula", -1, "nssf_contribution_employee + net_paye + shif_contribution + affordable_housing_levy", 14)
-net_pay: PayrollComponent = PayrollComponent(company, "Net Pay", "Net Pay", "net_pay", "formula", -1, "gross_pay - total_deductions", 15)
-
-
-# payroll computation
-payroll_computation: PayrollComputation = PayrollComputation()
-payroll_computation.company = company
-payroll_computation.payroll_period_start = "01/01/2023"
-payroll_computation.payroll_period_end = "31/01/2023"
-payroll_computation.staff = [john]
-
-# payroll computation components
-john_payroll_computation_components: List[PayrollComputationComponent] = [
-    PayrollComputationComponent(gross_pay, john, payroll_computation, 600_000.00),
-    PayrollComputationComponent(pension_benefit, john, payroll_computation, 0.00),
-    PayrollComputationComponent(personal_relief_monthly, john, payroll_computation, 2_400.00),
-    PayrollComputationComponent(nita, john, payroll_computation),
-    PayrollComputationComponent(nssf_contribution_employee, john, payroll_computation),
-    PayrollComputationComponent(affordable_housing_levy, john, payroll_computation),
-    PayrollComputationComponent(affordable_housing_relief, john, payroll_computation),
-    PayrollComputationComponent(shif_contribution, john, payroll_computation),
-    PayrollComputationComponent(deductable_shif_contribution, john, payroll_computation),
-    PayrollComputationComponent(taxable_income, john, payroll_computation),
-    PayrollComputationComponent(gross_paye, john, payroll_computation),
-    PayrollComputationComponent(net_paye, john, payroll_computation),
-    PayrollComputationComponent(affordable_housing_levy_employer, john, payroll_computation),
-    PayrollComputationComponent(nssf_contribution_employer, john, payroll_computation),
-    PayrollComputationComponent(total_deductions, john, payroll_computation),
-    PayrollComputationComponent(net_pay, john, payroll_computation)
-]
-
-def run_payroll(payroll_computation: PayrollComputation):
-    sorted_john_payroll_computation_components = sorted(john_payroll_computation_components, key=lambda x: x.payroll_component.order)
-    params = {}
-    for comp_component in sorted_john_payroll_computation_components:
-        params[comp_component.payroll_component.variable] = comp_component.calculate(params)
-        # print(f"{comp_component.payroll_component.variable}: {comp_component.value}")
-    return params
-
-payroll_results = run_payroll(payroll_computation)
