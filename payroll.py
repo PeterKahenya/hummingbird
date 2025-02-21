@@ -12,7 +12,7 @@ db_host = "localhost"
 db_port = 9010
 db_name = "hummingbird_payroll"
 DB_URL = f"mongodb://{urllib.parse.quote_plus(db_user)}:{urllib.parse.quote_plus(db_password)}@{db_host}:{db_port}/{db_name}?authSource=admin"
-connect(host=DB_URL)
+connect(host=DB_URL, uuidRepresentation="standard")
 
 # company = models.Company(name="ACME Ltd", legal_name="ACME Ltd", description="ACME Ltd", pin_number="P051234567A", nssf_number="12345678", shif_number="12345678", nita_number="12345678", contact_email="hr@acme.com", contact_phone="0712345678", address="1234 Acme Street, Acme City")
 # company.save()
