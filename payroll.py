@@ -1,3 +1,4 @@
+from json import load
 import pprint
 import urllib.parse
 from typing import Dict, List
@@ -75,8 +76,51 @@ compensation = {
 
 payroll_results: Dict[str, float] = {}
 for staff, payroll in computation.run():
-    print(f"{staff.first_name} {staff.last_name} Payroll")
-    pprint.pprint(payroll)
     payroll_results: Dict[str, float] = payroll
     break
 
+def create_payslip_template(payroll_results: Dict[str, float]) -> List[Dict[str, str]]:
+    from openpyxl import Workbook
+    wb = Workbook()
+    ws_raw = wb.create_sheet("Raw User Payroll")
+    ws_raw.append(["Key","Value"])
+    for k, v in payroll_results.items():
+        ws_raw.append([k,v])
+    ws_user = wb.create_sheet("Raw User Data")
+    ws_user.append(["Key","Value"])
+    for k, v in john.to_mongo().to_dict().items():
+        ws_user.append([k,str(v)])
+    ws_company = wb.create_sheet("Raw Company Data")
+    ws_company.append(["Key","Value"])
+    for k, v in company.to_mongo().to_dict().items():
+        ws_company.append([k,str(v)])
+    ws_payroll = wb.create_sheet("Raw Payroll Data")
+    ws_payroll.append(["Key","Value"])
+    for k, v in computation.to_mongo().to_dict().items():
+        ws_payroll.append([k,str(v)])
+    wb.save("ACME Payslip Template.xlsx")
+
+# create_payslip_template(payroll_results)
+
+def create_payslip():
+    from openpyxl import Workbook, load_workbook
+    wb = load_workbook("ACME Payslip Template.xlsx")
+    ws_raw = wb["Raw User Payroll"]
+    ws_raw.append(["Key","Value"])
+    for k, v in payroll_results.items():
+        ws_raw.append([k,v])
+    ws_user = wb["Raw User Data"]
+    ws_user.append(["Key","Value"])
+    for k, v in john.to_mongo().to_dict().items():
+        ws_user.append([k,str(v)])
+    ws_company = wb["Raw Company Data"]
+    ws_company.append(["Key","Value"])
+    for k, v in company.to_mongo().to_dict().items():
+        ws_company.append([k,str(v)])
+    ws_payroll = wb["Raw Payroll Data"]
+    ws_payroll.append(["Key","Value"])
+    for k, v in computation.to_mongo().to_dict().items():
+        ws_payroll.append([k,str(v)])
+    wb.save("john_doe_jan_2023_payslip.xlsx")
+
+create_payslip()
