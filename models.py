@@ -1,69 +1,15 @@
 from mongoengine import *
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Any, List, Dict
-
-# PAYE bands
-"""
-For example:
-Effective 1st July 2023
-
-Monthly Pay Bands (Ksh.)            Annual Pay Bands (Ksh.)             Rate of Tax (%)
-
-On the first kShs. 24,000           On the first KShs. 288,000          10
-On the next KShs. 8,333             On the next KShs.100,000            25
-On the next KShs. 467,667           On the next KShs. 5,612,000         30
-On the next KShs. 300,000           On the next KShs. 3,600,00          32.5
-On all income above KShs. 800,000   On all income above KShs. 9,600,000 35
-
-"""
-paye_bands_monthly: List[Dict[float, float]] = [
-   {
-        "lower": 0.00,
-        "upper": 24_000.00,
-        "rate": 10.00
-    },
-    {
-        "lower": 24_000.00,
-        "upper": 32_333.00,
-        "rate": 25.00
-    },
-    {
-        "lower": 32_333.00,
-        "upper": 500_000.00,
-        "rate": 30.00
-    },
-    {
-        "lower": 500_000.00,
-        "upper": 800_000.00,
-        "rate": 32.50
-    },
-    {
-        "lower": 800_000.00,
-        "upper": float("inf"),
-        "rate": 35.00
-    }
-]
-
-# NSSF bands
-nssf_bands: List[Dict[float, float]] = [
-    {
-        "lower": 0.00,
-        "upper": 7_000.00,
-        "rate": 6.00
-    },
-    {
-        "lower": 7_000.00,
-        "upper": 36_000.00,
-        "rate": 6.00
-    }
-]
+from decimal import Decimal
+import uuid
 
 # predefined formulae  
-def calculate_paye(taxable_income: float) -> float:
+def calculate_paye(taxable_income: float, paye_bands_monthly: List[Dict[str, Decimal]]) -> Decimal:
     """
         Calculate PAYE based on the taxable income and the PAYE bands
     """
-    paye: float = 0.00
+    paye: Decimal = 0.00
     for band in paye_bands_monthly:
         if taxable_income > band["upper"]:
             paye += (band["upper"] - band["lower"]) * (band["rate"] / 100)
@@ -72,12 +18,12 @@ def calculate_paye(taxable_income: float) -> float:
             break
     return paye
 
-def calculate_nssf_contribution(gross_pay: float) -> float:
+def calculate_nssf_contribution(gross_pay: float, nssf_bands_monthly: List[Dict[str, Decimal]]) -> Decimal:
     """
         Calculate NSSF contribution based on the gross pay and the NSSF bands
     """
-    nssf_contribution: float = 0.00
-    for band in nssf_bands:
+    nssf_contribution: Decimal = 0.00
+    for band in nssf_bands_monthly:
         if gross_pay > band["upper"]:
             nssf_contribution += (band["upper"] - band["lower"]) * band["rate"] / 100
         else:
@@ -85,10 +31,208 @@ def calculate_nssf_contribution(gross_pay: float) -> float:
             break
     return nssf_contribution
 
+class ContentType(Document):
+    """
+    ContentType model representing different types of content in the system
+    """
+    model: str = fields.StringField(required=True)
+    object_id: Optional[uuid.UUID] = fields.UUIDField(required=False)  # Optional field (uuid?)
+    type_of_content: str = fields.StringField(required=True, choices=['all_objects', 'specific_object'])
+    created_at: datetime = fields.DateTimeField(default=datetime.now(tz=timezone.utc))
+    updated_at: datetime = fields.DateTimeField()
+    
+    meta: Dict[str, Any] = {
+        'collection': 'content_types',
+        'indexes': [
+            {'fields': ['model']}
+        ]
+    }
+
+    def __str__(self) -> str:
+        return f"ContentType: {self.model}"
+    
+    def __repr__(self) -> str:
+        return f"<ContentType(id={self.id}, model={self.model})>"
+    
+    def save(self, *args: Any, **kwargs: Any) -> Any:
+        self.updated_at = datetime.now(tz=timezone.utc)
+        return super(ContentType, self).save(*args, **kwargs)
+
+class Permission(Document):
+    """
+    Permission model that defines access controls
+    Has a one-to-many relationship with ContentType
+    """
+    content_type: ContentType = fields.ReferenceField(ContentType, required=True)
+    codename: str = fields.StringField(required=True)
+    name: str = fields.StringField(required=True)
+    created_at: datetime = fields.DateTimeField(default=datetime.now(tz=timezone.utc))
+    updated_at: datetime = fields.DateTimeField()
+    
+    meta: Dict[str, Any] = {
+        'collection': 'permissions',
+        'indexes': [
+            {'fields': ['content_type', 'codename'], 'unique': True}
+        ]
+    }
+
+    def __str__(self) -> str:
+        return f"{self.name}"
+    
+    def __repr__(self) -> str:
+        return f"<Permission(id={self.id}, name={self.name}, codename={self.codename})>"
+    
+    def save(self, *args: Any, **kwargs: Any) -> Any:
+        self.updated_at = datetime.now(tz=timezone.utc)
+        return super(Permission, self).save(*args, **kwargs)
+
+class Role(Document):
+    """
+    Role model that groups permissions
+    Has a many-to-many relationship with Permission
+    """
+    name: str = fields.StringField(required=True)
+    permissions: List[Permission] = fields.ListField(fields.ReferenceField(Permission))
+    created_at: datetime = fields.DateTimeField(default=datetime.now(tz=timezone.utc))
+    updated_at: datetime = fields.DateTimeField()
+    
+    meta: Dict[str, Any] = {
+        'collection': 'roles'
+    }
+
+    def __str__(self) -> str:
+        return f"Role: {self.name}"
+    
+    def __repr__(self) -> str:
+        return f"<Role(id={self.id}, name={self.name}, permissions_count={len(self.permissions)})>"
+    
+    def save(self, *args: Any, **kwargs: Any) -> Any:
+        self.updated_at = datetime.now(tz=timezone.utc)
+        return super(Role, self).save(*args, **kwargs)
+
+class User(Document):
+    """
+    User model
+    Has a many-to-many relationship with Role
+    """
+    name: str = fields.StringField(required=True)
+    phone: str = fields.StringField(max_length=50)  # Using mediumtext equivalent
+    is_active: bool = fields.BooleanField(default=True)
+    last_seen: Optional[datetime] = fields.DateTimeField(required=False)  # Optional (datetime?)
+    phone_verification_code: Optional[str] = fields.StringField(max_length=50, required=False)  # Optional (mediumtext?)
+    is_verified: bool = fields.BooleanField(default=False)
+    is_superuser: bool = fields.BooleanField(default=False)
+    roles: List[Role] = fields.ListField(fields.ReferenceField(Role))
+    created_at: datetime = fields.DateTimeField(default=datetime.now(tz=timezone.utc))
+    updated_at: datetime = fields.DateTimeField()
+    
+    meta: Dict[str, Any] = {
+        'collection': 'users',
+        'indexes': [
+            {'fields': ['phone'], 'sparse': True}
+        ]
+    }
+
+    def __str__(self) -> str:
+        return f"{self.name}"
+    
+    def __repr__(self) -> str:
+        return f"<User(id={self.id}, name={self.name}, is_active={self.is_active}, is_superuser={self.is_superuser})>"
+    
+    def save(self, *args: Any, **kwargs: Any) -> Any:
+        self.updated_at = datetime.now(tz=timezone.utc)
+        return super(User, self).save(*args, **kwargs)
+    
+    def has_permission(self, codename: str, content_type: Optional[Any] = None) -> bool:
+        """Check if user has a specific permission"""
+        # Direct superuser check
+        if self.is_superuser:
+            return True
+            
+        # Check permissions via roles
+        for role in self.roles:
+            for permission in role.permissions:
+                if permission.codename == codename:
+                    if content_type is None or permission.content_type.id == content_type:
+                        return True
+        return False
+
+class ClientApp(Document):
+    """
+    ClientApp model
+    Has a many-to-one relationship with User
+    """
+    name: str = fields.StringField()
+    description: str = fields.StringField()
+    client_id: str = fields.StringField(required=True)
+    client_secret: str = fields.StringField(required=True)
+    user_id: User = fields.ReferenceField(User)
+    is_superuser: bool = fields.BooleanField(default=False)
+    created_at: datetime = fields.DateTimeField(default=datetime.now(tz=timezone.utc))
+    updated_at: datetime = fields.DateTimeField()
+    
+    meta: Dict[str, Any] = {
+        'collection': 'client_apps',
+        'indexes': [
+            {'fields': ['client_id'], 'unique': True},
+            {'fields': ['user_id']}
+        ]
+    }
+
+    def __str__(self) -> str:
+        return f"{self.name} (Client App)"
+    
+    def __repr__(self) -> str:
+        return f"<ClientApp(id={self.id}, name={self.name}, client_id={self.client_id})>"
+    
+    def save(self, *args: Any, **kwargs: Any) -> Any:
+        self.updated_at = datetime.now(tz=timezone.utc)
+        return super(ClientApp, self).save(*args, **kwargs)
+
+# PAYE and NSSF bands
+class Band(Document):
+    """
+    Represents a band for a payroll component.
+    This document defines a band for a payroll component, including
+    the lower and upper limits of the band, and the rate of the band.
+    """
+    period_start: datetime = DateTimeField(required=True, default=datetime.now(tz=timezone.utc))
+    period_end: datetime = DateTimeField(required=True, default=datetime.now(tz=timezone.utc)+timedelta(days=365))
+    band_type: str = StringField(required=True, choices=['PAYE', 'NSSF'])
+    band_frequency: str = StringField(required=True, choices=['monthly', 'annual'], default='monthly')
+    lower: float = DecimalField(required=True)
+    upper: float = DecimalField(required=True, default=float("inf"))
+    rate: float = DecimalField(required=True)
+    created_at: datetime = DateTimeField(default=datetime.now(tz=timezone.utc))
+    updated_at: datetime = DateTimeField()
+
+    meta = {
+        'collection': 'bands',
+        'indexes': [
+            ('lower', 'upper')
+        ]
+    }
+
+    def __str__(self) -> str:
+        return f"{self.lower} to {self.upper} at {self.rate}%"
+    
+    def __repr__(self) -> str:
+        return f"Band(lower={self.lower}, upper={self.upper}, rate={self.rate})"
+    
+    def to_dict(self) -> Dict[str, Decimal]:
+        return {
+            "lower": self.lower,
+            "upper": self.upper,
+            "rate": self.rate
+        }
+
+    def save(self, *args: Any, **kwargs: Any) -> Any:
+        self.updated_at = datetime.now(tz=timezone.utc)
+        return super(Band, self).save(*args, **kwargs)
+
 class Company(Document):
     """
     Represents a company entity in the payroll system.
-    
     This document stores core company information including legal details
     and contact information required for payroll processing.
     """
@@ -102,6 +246,8 @@ class Company(Document):
     contact_email: Optional[str] = EmailField()
     contact_phone: Optional[str] = StringField()
     address: Optional[str] = StringField()
+    created_at: datetime = DateTimeField(default=datetime.now(tz=timezone.utc))
+    updated_at: datetime = DateTimeField()
 
     meta = {
         'collection': 'companies'
@@ -112,11 +258,14 @@ class Company(Document):
     
     def __repr__(self) -> str:
         return f"Company(name='{self.name}', pin_number='{self.pin_number}')"
+    
+    def save(self, *args: Any, **kwargs: Any) -> Any:
+        self.updated_at = datetime.now(tz=timezone.utc)
+        return super(Band, self).save(*args, **kwargs)
 
 class Staff(Document):
     """
     Represents an employee in the payroll system.
-    
     This document stores employee personal information, identification numbers,
     and banking details required for payroll processing.
     """
@@ -141,6 +290,8 @@ class Staff(Document):
     bank_swift_code: Optional[str] = StringField()
     bank_branch: Optional[str] = StringField()
     company: 'Company' = ReferenceField('Company', required=True)
+    created_at: datetime = DateTimeField(default=datetime.now(tz=timezone.utc))
+    updated_at: datetime = DateTimeField()
 
     meta = {
         'collection': 'staff',
@@ -161,11 +312,14 @@ class Staff(Document):
     def full_name(self) -> str:
         """Returns the employee's full name."""
         return f"{self.first_name} {self.last_name}"
+    
+    def save(self, *args: Any, **kwargs: Any) -> Any:
+        self.updated_at = datetime.now(tz=timezone.utc)
+        return super(Band, self).save(*args, **kwargs)
 
 class PayrollComponent(Document):
     """
     Represents a payroll component in the system.
-    
     This document defines various components that make up an employee's pay,
     including both fixed and variable components, and their calculation rules.
     """
@@ -177,7 +331,10 @@ class PayrollComponent(Document):
     value: Optional[float] = DecimalField()
     formula: Optional[str] = StringField()
     order: int = IntField(default=0)
-    effective_from: datetime = DateTimeField(default=datetime.utcnow)
+    effective_from: datetime = DateTimeField(default=datetime.now(tz=timezone.utc))
+    created_at: datetime = DateTimeField(default=datetime.now(tz=timezone.utc))
+    updated_at: datetime = DateTimeField()
+
     if component_type == "fixed":
         assert value is not None, "Fixed components must have a value"
     if component_type == "formula":
@@ -200,11 +357,14 @@ class PayrollComponent(Document):
     
     def __repr__(self) -> str:
         return f"PayrollComponent(name='{self.name}', company='{self.company.name}')"
+    
+    def save(self, *args: Any, **kwargs: Any) -> Any:
+        self.updated_at = datetime.now(tz=timezone.utc)
+        return super(Band, self).save(*args, **kwargs)
 
 class Computation(Document):
     """
     Represents a payroll computation period.
-    
     This document defines a specific payroll run for a company,
     including the period for which the payroll is being processed.
     """
@@ -212,6 +372,8 @@ class Computation(Document):
     notes: Optional[str] = StringField()
     payroll_period_start: datetime = DateField(required=True)
     payroll_period_end: datetime = DateField(required=True)
+    created_at: datetime = DateTimeField(default=datetime.now(tz=timezone.utc))
+    updated_at: datetime = DateTimeField()
 
     meta = {
         'collection': 'computations',
@@ -220,6 +382,10 @@ class Computation(Document):
             ('company', 'payroll_period_start', 'payroll_period_end')
         ]
     }
+
+    def save(self, *args: Any, **kwargs: Any) -> Any:
+        self.updated_at = datetime.now(tz=timezone.utc)
+        return super(Band, self).save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.name} ({self.payroll_period_start} to {self.payroll_period_end})"
@@ -234,16 +400,20 @@ class Computation(Document):
     
     def run(self):
         """
-            Run the payroll computation for all staff members in the company
-            Get all staff members in the company
-            Get each staff member's computation components in order ascending
-            Calculate the value of each component passing the dict of the previous components
-            Save the value of the computed component
+        Run the payroll computation for all staff members in the company
+        Get all staff members in the company
+        Get each staff member's computation components in order ascending
+        Calculate the value of each component passing the dict of the previous components
+        Save the value of the computed component
         """
         staff: List[Staff] = Staff.objects(company=self.company)
         for employee in staff:
             params: Dict[str, float] = {}
-            payroll_components: List[PayrollComponent] = PayrollComponent.objects(company=self.company).order_by('order')
+            nssf_bands_monthly: List[Dict[str, Decimal]] = Band.objects(band_type='NSSF', band_frequency='monthly', period_start__lte=self.payroll_period_start, period_end__gte=self.payroll_period_start).order_by('lower')
+            paye_bands_monthly: List[Dict[str, Decimal]] = Band.objects(band_type='PAYE', band_frequency='monthly', period_start__lte=self.payroll_period_start, period_end__gte=self.payroll_period_start).order_by('lower')
+            params['nssf_bands_monthly'] = [band.to_dict() for band in nssf_bands_monthly]
+            params['paye_bands_monthly'] = [band.to_dict() for band in paye_bands_monthly]
+            payroll_components: List[PayrollComponent] = PayrollComponent.objects(company=self.company, effective_from__qte=self.payroll_period_start).order_by('order')
             for payroll_component in payroll_components:
                 computation_component = ComputationComponent.objects(computation=self, payroll_component=payroll_component, staff=employee).first()
                 if computation_component is None:
@@ -255,7 +425,6 @@ class Computation(Document):
 class ComputationComponent(Document):
     """
     Represents the intersection between Computation, PayrollComponent, and Staff.
-    
     This document stores the actual computed values for each payroll component
     for each staff member within a specific computation period.
     """
@@ -263,6 +432,8 @@ class ComputationComponent(Document):
     payroll_component: 'PayrollComponent' = ReferenceField('PayrollComponent', required=True)
     staff: 'Staff' = ReferenceField('Staff', required=True)
     value: float = DecimalField(required=True)
+    created_at: datetime = DateTimeField(default=datetime.now(tz=timezone.utc))
+    updated_at: datetime = DateTimeField()
 
     meta = {
         'collection': 'computation_components',
@@ -290,3 +461,7 @@ class ComputationComponent(Document):
         if self.payroll_component.component_type == "formula":
             self.value: float = eval(self.payroll_component.formula, globals(), params)
         return self.value
+    
+    def save(self, *args: Any, **kwargs: Any) -> Any:
+        self.updated_at = datetime.now(tz=timezone.utc)
+        return super(Band, self).save(*args, **kwargs)
