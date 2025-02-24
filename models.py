@@ -4,60 +4,6 @@ from typing import Optional, Any, List, Dict
 from decimal import Decimal
 import uuid
 
-# PAYE bands
-"""
-For example:
-Effective 1st July 2023
-Monthly Pay Bands (Ksh.)            Annual Pay Bands (Ksh.)                 Rate of Tax (%)
-On the first kShs. 24,000           On the first KShs. 288,000              10
-On the next KShs. 8,333             On the next KShs.100,000                25
-On the next KShs. 467,667           On the next KShs. 5,612,000             30
-On the next KShs. 300,000           On the next KShs. 3,600,00              32.5
-On all income above KShs. 800,000   On all income above KShs. 9,600,000     35
-"""
-
-paye_bands_monthly: List[Dict[float, float]] = [
-   {
-        "lower": 0.00,
-        "upper": 24_000.00,
-        "rate": 10.00
-    },
-    {
-        "lower": 24_000.00,
-        "upper": 32_333.00,
-        "rate": 25.00
-    },
-    {
-        "lower": 32_333.00,
-        "upper": 500_000.00,
-        "rate": 30.00
-    },
-    {
-        "lower": 500_000.00,
-        "upper": 800_000.00,
-        "rate": 32.50
-    },
-    {
-        "lower": 800_000.00,
-        "upper": float("inf"),
-        "rate": 35.00
-    }
-]
-
-# NSSF bands
-nssf_bands: List[Dict[float, float]] = [
-    {
-        "lower": 0.00,
-        "upper": 7_000.00,
-        "rate": 6.00
-    },
-    {
-        "lower": 7_000.00,
-        "upper": 36_000.00,
-        "rate": 6.00
-    }
-]
-
 # predefined formulae  
 def calculate_paye(taxable_income: float, paye_bands_monthly: List[Dict[str, Decimal]]) -> Decimal:
     """
@@ -77,7 +23,7 @@ def calculate_nssf_contribution(gross_pay: float, nssf_bands_monthly: List[Dict[
         Calculate NSSF contribution based on the gross pay and the NSSF bands
     """
     nssf_contribution: Decimal = 0.00
-    for band in nssf_bands:
+    for band in nssf_bands_monthly:
         if gross_pay > band["upper"]:
             nssf_contribution += (band["upper"] - band["lower"]) * band["rate"] / 100
         else:
@@ -243,6 +189,7 @@ class ClientApp(Document):
         self.updated_at = datetime.now(tz=timezone.utc)
         return super(ClientApp, self).save(*args, **kwargs)
 
+# PAYE and NSSF bands
 class Band(Document):
     """
     Represents a band for a payroll component.
