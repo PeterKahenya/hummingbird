@@ -128,7 +128,7 @@ def seed_db() -> None:
             code_type="formula",
             tags=["TAX"],
             value=0.0,
-            formula="params['Basic Salary'] * 0.1",
+            formula="basic_salary * 0.1",
             order=2
         )
         payroll_code_formula.save()
