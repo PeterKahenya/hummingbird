@@ -3,3 +3,9 @@ mongoengine==0.29.1
 openpyxl==3.1.5
 pillow==11.1.0
 pdfkit==1.0.0
+fastapi[standard]
+pydantic-settings==2.7.1
+mongomock==4.3.0
+pytest-asyncio
+faker
+nanoid
