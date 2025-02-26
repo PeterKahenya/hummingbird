@@ -35,7 +35,62 @@ def calculate_nssf_contribution(gross_pay: float, nssf_bands_monthly: List[Dict[
             break
     return nssf_contribution
 
-class ContentType(Document):
+class BaseDocument(Document):
+    meta = {'abstract': True}
+    
+    def to_dict(self):
+        data = {}
+        for field_name in self._fields:
+            if field_name == 'id' or field_name == '_id':
+                data['id'] = str(self.id)
+                continue
+                
+            field_value = getattr(self, field_name)
+            field = self._fields[field_name]
+            if field_value is None:
+                data[field_name] = None
+                continue
+            if isinstance(field, ReferenceField):
+                if hasattr(field_value, 'to_pydantic_dict'):
+                    data[field_name] = field_value.to_pydantic_dict()
+                else:
+                    ref_dict = field_value.to_mongo().to_dict()
+                    if '_id' in ref_dict:
+                        ref_dict['id'] = str(ref_dict.pop('_id'))
+                    data[field_name] = ref_dict
+            
+            # Handle ListField with ReferenceField
+            elif isinstance(field, ListField) and isinstance(field.field, ReferenceField):
+                data[field_name] = []
+                for item in field_value:
+                    data[field_name].append(item.to_dict())        
+            # Handle regular ListField
+            elif isinstance(field, ListField):
+                data[field_name] = [
+                    item.to_pydantic_dict() if hasattr(item, 'to_pydantic_dict') 
+                    else str(item) if isinstance(item, ObjectId)
+                    else item 
+                    for item in field_value
+                ]
+            
+            # Handle EmbeddedDocumentField
+            elif isinstance(field, EmbeddedDocumentField):
+                if hasattr(field_value, 'to_pydantic_dict'):
+                    data[field_name] = field_value.to_pydantic_dict()
+                else:
+                    data[field_name] = field_value.to_mongo().to_dict()
+            
+            # Handle ObjectId
+            elif isinstance(field_value, ObjectId):
+                data[field_name] = str(field_value)
+            
+            # Regular fields
+            else:
+                data[field_name] = field_value
+                                
+        return data
+
+class ContentType(BaseDocument):
     """
     ContentType model representing different types of content in the system
     """
@@ -62,7 +117,7 @@ class ContentType(Document):
         self.updated_at = datetime.now(tz=timezone.utc)
         return super(ContentType, self).save(*args, **kwargs)
 
-class Permission(Document):
+class Permission(BaseDocument):
     """
     Permission model that defines access controls
     Has a one-to-many relationship with ContentType
@@ -90,7 +145,7 @@ class Permission(Document):
         self.updated_at = datetime.now(tz=timezone.utc)
         return super(Permission, self).save(*args, **kwargs)
 
-class Role(Document):
+class Role(BaseDocument):
     """
     Role model that groups permissions
     Has a many-to-many relationship with Permission
@@ -114,14 +169,15 @@ class Role(Document):
         self.updated_at = datetime.now(tz=timezone.utc)
         return super(Role, self).save(*args, **kwargs)
 
-class User(Document):
+class User(BaseDocument):
     """
     User model
     Has a many-to-many relationship with Role
     """
     name: str = StringField(required=True)
+    email: str = EmailField(required=True, unique=True)
     phone: str = StringField(max_length=50, unique=True)  # Using mediumtext equivalent
-    email: str = EmailField()
+    password: str = StringField(required=True)
     is_active: bool = BooleanField(default=True)
     last_seen: Optional[datetime] = DateTimeField(required=False)  # Optional (datetime?)
     phone_verification_code: Optional[str] = StringField(max_length=50, required=False)  # Optional (mediumtext?)
@@ -157,7 +213,7 @@ class User(Document):
                         return True
         return False
 
-class ClientApp(Document):
+class ClientApp(BaseDocument):
     """
     ClientApp model
     Has a many-to-one relationship with User
@@ -188,7 +244,7 @@ class ClientApp(Document):
         return super(ClientApp, self).save(*args, **kwargs)
 
 # PAYE and NSSF bands
-class Band(Document):
+class Band(BaseDocument):
     """
     Represents a band for a payroll component.
     This document defines a band for a payroll component, including
@@ -216,19 +272,12 @@ class Band(Document):
     
     def __repr__(self) -> str:
         return f"Band(lower={self.lower}, upper={self.upper}, rate={self.rate})"
-    
-    def to_dict(self) -> Dict[str, Decimal]:
-        return {
-            "lower": self.lower,
-            "upper": self.upper,
-            "rate": self.rate
-        }
 
     def save(self, *args: Any, **kwargs: Any) -> Any:
         self.updated_at = datetime.now(tz=timezone.utc)
         return super(Band, self).save(*args, **kwargs)
 
-class Company(Document):
+class Company(BaseDocument):
     """
     Represents a company entity in the payroll system.
     This document stores core company information including legal details
@@ -261,7 +310,7 @@ class Company(Document):
         self.updated_at = datetime.now(tz=timezone.utc)
         return super(Company, self).save(*args, **kwargs)
 
-class Staff(Document):
+class Staff(BaseDocument):
     """
     Represents an employee in the payroll system.
     This document stores employee personal information, identification numbers,
@@ -316,7 +365,7 @@ class Staff(Document):
         self.updated_at = datetime.now(tz=timezone.utc)
         return super(Staff, self).save(*args, **kwargs)
 
-class PayrollCode(Document):
+class PayrollCode(BaseDocument):
     """
     Represents a payroll component in the system.
     This document defines various components that make up an employee's pay,
@@ -362,7 +411,7 @@ class PayrollCode(Document):
         self.updated_at = datetime.now(tz=timezone.utc)
         return super(PayrollCode, self).save(*args, **kwargs)
 
-class Computation(Document):
+class Computation(BaseDocument):
     """
     Represents a payroll computation period.
     This document defines a specific payroll run for a company,
@@ -424,7 +473,7 @@ class Computation(Document):
                 computation_component.save()
             yield employee, params
 
-class ComputationComponent(Document):
+class ComputationComponent(BaseDocument):
     """
     Represents the intersection between Computation, PayrollComponent, and Staff.
     This document stores the actual computed values for each payroll component

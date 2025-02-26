@@ -19,6 +19,7 @@ def test_auth_models(db: None) -> None:
         name=fake.name(),
         phone=fake.phone_number(),
         email=fake.email(),
+        password=fake.password(),
         is_active=True,
         last_seen=fake.date_time_this_year(),
         phone_verification_code="auth",

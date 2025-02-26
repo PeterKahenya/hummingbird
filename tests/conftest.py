@@ -1,3 +1,4 @@
+from openpyxl import formula
 import pytest
 import mongomock
 from mongoengine import connect
@@ -33,6 +34,7 @@ def seed_db() -> None:
             name = fake.name(),
             phone = fake.phone_number(),
             email = fake.email(),
+            password = fake.password(),
             is_active = True,
             last_seen = fake.date_time_this_year(),
             phone_verification_code = utils.generate_random_string(6),
@@ -63,6 +65,8 @@ def seed_db() -> None:
         )
         company.save()
         staff = models.Staff(
+            user=user_in_db,
+            company=company,
             first_name=fake.first_name(),
             last_name=fake.last_name(),
             job_title=fake.job(),
@@ -71,8 +75,18 @@ def seed_db() -> None:
             contact_phone=fake.phone_number(),
             pin_number = utils.generate_random_string(10),
             staff_number = utils.generate_random_string(6),
-            company=company,
-            user=user_in_db
+            shif_number = utils.generate_random_string(6),
+            nssf_number = utils.generate_random_string(6),
+            nita_number = utils.generate_random_string(6),
+            national_id_number = utils.generate_random_string(8),
+            date_of_birth = fake.date_time_this_century(),
+            is_active = True,
+            joined_on = fake.date_time_this_year(),
+            departed_on = None,
+            bank_account_number = utils.generate_random_string(10),
+            bank_name = fake.company(),
+            bank_swift_code = utils.generate_random_string(8),
+            bank_branch = fake.word()
         )
         staff.save()
         band_paye = models.Band(
@@ -99,8 +113,10 @@ def seed_db() -> None:
             company=company,
             name="Basic Salary",
             description="Fixed base salary",
+            variable="basic_salary",
             code_type="fixed",
             value=random.uniform(30000, 100000),
+            formula="",
             order=1
         )
         payroll_code_fixed.save()
@@ -108,7 +124,10 @@ def seed_db() -> None:
             company=company,
             name="Tax",
             description="Calculated tax",
+            variable="tax",
             code_type="formula",
+            tags=["TAX"],
+            value=0.0,
             formula="params['Basic Salary'] * 0.1",
             order=2
         )
