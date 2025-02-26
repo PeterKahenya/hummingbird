@@ -180,8 +180,8 @@ class CompanyInDB(ModelInDBBase):
     address: str
 
 class StaffCreate(BaseModel):
-    user: ModelInDBBase
-    company: ModelInDBBase
+    user: str
+    company: str
     first_name: str
     last_name: str
     job_title: str
@@ -194,9 +194,9 @@ class StaffCreate(BaseModel):
     nssf_number: Optional[str] = None
     nita_number: Optional[str] = None
     national_id_number: str
-    date_of_birth: datetime
-    is_active: bool
-    joined_on: datetime
+    date_of_birth: Optional[datetime] = None
+    is_active: bool = True
+    joined_on: datetime = datetime.now()
     departed_on: Optional[datetime] = None
     bank_account_number: Optional[str] = None
     bank_name: Optional[str] = None
@@ -250,7 +250,7 @@ class StaffInDB(ModelInDBBase):
     bank_branch: str
 
 class PayrollCodeCreate(BaseModel):
-    company: ModelBase
+    company: str
     name: str
     description: Optional[str] = None
     variable: str
@@ -285,12 +285,12 @@ class PayrollCodeInDB(ModelInDBBase):
     effective_from: datetime
 
 class ComputationCreate(BaseModel):
-    company: ModelBase
+    company: str
     payroll_period_start: datetime
     payroll_period_end: datetime
     notes: Optional[str] = None
     status: str
-    generated_by: ModelBase
+    generated_by: str
 
 class ComputationUpdate(BaseModel):
     payroll_period_start: Optional[datetime] = None
@@ -307,8 +307,14 @@ class ComputationInDB(ModelInDBBase):
     status: str
     generated_by: ModelInDBBase
 
+class ComputationComponentCreate(BaseModel):
+    computation: str
+    payroll_component: str
+    staff: str
+    value: Decimal
+
 class ComputationComponentInDB(ModelInDBBase):
     computation: ModelBase
-    payroll_code: ModelBase
+    payroll_component: ModelBase
     staff: ModelBase
-    value: float
+    value: Decimal

@@ -272,8 +272,8 @@ def test_payroll_schemas(db):
     company = models.Company.objects.first()
     user = models.User.objects.first()
     staff_create = schemas.StaffCreate(**{
-        "user": schemas.ModelInDBBase.model_validate(user.to_dict()).model_dump(),
-        "company": schemas.ModelInDBBase.model_validate(company.to_dict()).model_dump(),
+        "user": str(user.id),
+        "company": str(company.id),
         "first_name": fake.first_name(),
         "last_name": fake.last_name(),
         "job_title": fake.job(),
@@ -326,7 +326,7 @@ def test_payroll_schemas(db):
     # test payroll code schema
     company = models.Company.objects.first()
     payroll_code_create = schemas.PayrollCodeCreate(**{
-        "company":schemas.ModelBase.model_validate(company.to_dict()).model_dump(),
+        "company": str(company.id),
         "name": "BASE",
         "description": "Base Salary",
         "variable": "base_salary",
@@ -363,12 +363,12 @@ def test_payroll_schemas(db):
     # test computation schema
     company = models.Company.objects.first()
     payroll_computation_create = schemas.ComputationCreate(**{
-        "company": schemas.ModelBase.model_validate(company.to_dict()).model_dump(),
+        "company": str(company.id),
         "notes": fake.text(),
         "payroll_period_start": fake.date_time_this_year(),
         "payroll_period_end": fake.date_time_this_year(),
         "status": "draft",
-        "generated_by": schemas.ModelBase.model_validate(user.to_dict()).model_dump()
+        "generated_by": str(user.id)
     })
     assert payroll_computation_create.company is not None
     assert payroll_computation_create.notes is not None
