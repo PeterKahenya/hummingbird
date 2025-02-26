@@ -435,10 +435,10 @@ class Computation(BaseDocument):
     }
 
     def __str__(self) -> str:
-        return f"{self.name} ({self.payroll_period_start} to {self.payroll_period_end})"
+        return f"Computation ({self.company.name} - {self.payroll_period_start} to {self.payroll_period_end})"
     
     def __repr__(self) -> str:
-        return f"Computation(name='{self.name}', company='{self.company.name}')"
+        return f"Computation({self.company.name} - {self.payroll_period_start} to {self.payroll_period_end})"
     
     def save(self, *args: Any, **kwargs: Any) -> Any:
         self.updated_at = datetime.now(tz=timezone.utc)
@@ -464,7 +464,7 @@ class Computation(BaseDocument):
             paye_bands_monthly: List[Dict[str, Decimal]] = Band.objects(band_type='PAYE', band_frequency='monthly', period_start__lte=self.payroll_period_start, period_end__gte=self.payroll_period_start).order_by('lower')
             params['nssf_bands_monthly'] = [band.to_dict() for band in nssf_bands_monthly]
             params['paye_bands_monthly'] = [band.to_dict() for band in paye_bands_monthly]
-            payroll_components: List[PayrollCode] = PayrollCode.objects(company=self.company, effective_from__qte=self.payroll_period_start).order_by('order')
+            payroll_components: List[PayrollCode] = PayrollCode.objects(company=self.company, effective_from__gte=self.payroll_period_start).order_by('order')
             for payroll_component in payroll_components:
                 computation_component = ComputationComponent.objects(computation=self, payroll_component=payroll_component, staff=employee).first()
                 if computation_component is None:
