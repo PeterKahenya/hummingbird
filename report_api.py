@@ -1,6 +1,5 @@
 import datetime
 import json
-import pprint
 from typing import List, Optional
 from urllib import request
 from fastapi import APIRouter, Request
@@ -30,7 +29,6 @@ def generate_payslip(computation_db: models.Computation, staff_db: models.Staff)
     net_pay_code = models.PayrollCode.objects.filter(company=computation_db.company, variable="net_pay").first()
     computation_components = models.ComputationComponent.objects.filter(computation=computation_db, staff=staff_db).order_by("payroll_component__order").all()
     net_pay_component = models.ComputationComponent.objects.filter(computation=computation_db, staff=staff_db, payroll_component=net_pay_code).first()
-    pprint.pprint(computation_components)
     context = {
         "date_from": computation_db.payroll_period_start.strftime("%Y-%m-%d %H:%M:%S"),
         "date_to": computation_db.payroll_period_end.strftime("%Y-%m-%d %H:%M:%S"),
@@ -109,7 +107,6 @@ def generate_p9a(computations: Dict[int, models.Computation|None], staff_db: mod
         "totals": totals,
         "company": company_db.to_dict(),
     }
-    # pprint.pprint(context["monthly_payroll"])
     env = Environment(loader=FileSystemLoader(f"templates/{company_db.name}"))
     env.filters["format_currency"] = format_currency
     template = env.get_template("p9a.html")
@@ -163,7 +160,6 @@ async def download_payslip(
     """
     Download payslip
     """
-    # print(f"Trying to download {file_path}")
     if os.path.exists(payslip_path):
         return FileResponse(payslip_path, media_type="application/pdf")
     else:
@@ -224,7 +220,6 @@ async def download_p9a(
     """
     Download P9A
     """
-    # print(f"Trying to download {file_path}")
     if os.path.exists(p9a_path):
         return FileResponse(p9a_path, media_type="application/pdf")
     else:
@@ -309,7 +304,6 @@ async def download_payroll_report(
     """
         Download company payroll report
     """
-    print(f"Trying to download {report_path}")
     if os.path.exists(report_path):
         return FileResponse(report_path, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     else:
