@@ -439,7 +439,7 @@ class Company(BaseDocument):
             )
             new_payroll_code.save()
         # clone the master company's template folder
-        shutil.copytree(f"templates/{master_company.name}", f"templates/{self.name}")
+        shutil.copytree(f"templates/{master_company.name}", f"templates/{self.name}", dirs_exist_ok=True)
         return True
     
     # roll forward the company's payroll codes
