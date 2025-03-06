@@ -1,5 +1,3 @@
-from bdb import effective
-import os
 import shutil
 from fastapi.testclient import TestClient
 from pydantic_settings import BaseSettings
@@ -195,7 +193,7 @@ def db():
     utils.initialize_db(settings, is_test=True)
     seed_db()
     yield
-    shutil.rmtree("templates/Test Company1", ignore_errors=True)
+    # shutil.rmtree("templates/Test Company1", ignore_errors=True)
     shutil.rmtree("reports/Test Company1", ignore_errors=True)
 
 @pytest.fixture(scope="session")
