@@ -11,3 +11,4 @@ faker
 nanoid
 requests
 honeybadger==0.21
+coverage==7.6.12
