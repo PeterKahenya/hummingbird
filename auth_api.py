@@ -41,7 +41,6 @@ async def verify_phone_request(phone: str = Form(...), db = Depends(get_db), app
 @router.post("/verify-phone/verify",status_code=200,tags=["Authenticate"])
 async def verify_phone_verify(phone: str = Form(...), code: str = Form(...), db = Depends(get_db), app: models.ClientApp = Depends(get_app)) -> Dict[str,Any]:
     user: models.User = models.User.objects.filter(phone=phone).first()
-    print
     if not user:
         raise HTTPException(status_code=404,detail={"message":"User not found"})
     if not await user.validate_verification_code(code,mode="phone"):
