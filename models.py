@@ -261,7 +261,6 @@ class User(BaseDocument):
         """
         for role in self.roles:
             for perm in role.permissions:
-                # print(perm.codename)
                 if perm.codename == permission:
                     return True
         return False
@@ -563,7 +562,6 @@ class PayrollCode(BaseDocument):
         return f"PayrollComponent(name='{self.name}', company='{self.company.name}')"
     
     def save(self, *args: Any, **kwargs: Any) -> Any:
-        print("saving payroll code")
         self.updated_at = datetime.now(tz=timezone.utc)
         # check if there is another component with the same order and company variable and effective from
         if PayrollCode.objects(company=self.company, order=self.order, effective_from=self.effective_from).count() > 0:
