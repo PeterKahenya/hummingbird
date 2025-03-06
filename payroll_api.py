@@ -488,7 +488,6 @@ async def get_compensations_template(
 
 @router.get("/files/{file_path:path}",status_code=200)
 async def download(file_path:str, user: models.User = Depends(authorize(perm="read_computations"))) -> FileResponse:
-    # print(f"Trying to download {file_path}")
     if os.path.exists(file_path):
         return FileResponse(file_path)
     else:
