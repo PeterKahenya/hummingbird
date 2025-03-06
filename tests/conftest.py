@@ -1,4 +1,8 @@
-from openpyxl import formula
+from bdb import effective
+import os
+import shutil
+from fastapi.testclient import TestClient
+from pydantic_settings import BaseSettings
 import pytest
 import mongomock
 from mongoengine import connect
@@ -10,6 +14,17 @@ from datetime import datetime, timedelta, timezone
 import random
 
 fake = faker.Faker()
+
+class AppSettings(BaseSettings):
+    superuser_phone: str = "0711111111"
+    superuser_email: str = "test@example.com"
+    superuser_password: str = "password"
+    mongodb_password: str = "example"
+    mongodb_host: str = "localhost"
+    mongodb_port: str = "27017"
+    mongodb_database: str = "mongoenginetest"
+
+settings = AppSettings()
 
 def seed_db() -> None:
     for _ in range(5):
@@ -27,6 +42,7 @@ def seed_db() -> None:
         permission_in_db.save()
         role_in_db = models.Role(
             name=fake.word(),
+            description = fake.sentence(),
             permissions=[permission_in_db]
         )
         role_in_db.save()
@@ -52,7 +68,7 @@ def seed_db() -> None:
         )
         client_app.save()
         company = models.Company(
-            name=fake.company(),
+            name="Test Company1",
             legal_name=fake.company() + " Ltd.",
             description=fake.text(),
             pin_number = utils.generate_random_string(10),
@@ -114,10 +130,12 @@ def seed_db() -> None:
             name="Basic Salary",
             description="Fixed base salary",
             variable="basic_salary",
-            code_type="fixed",
+            code_type="input",
+            tags = ["BASIC", "COMP"],
             value=random.uniform(30000, 100000),
             formula="",
-            order=1
+            order=1,
+            effective_from=datetime(2025,1,1,tzinfo=timezone.utc)
         )
         payroll_code_fixed.save()
         payroll_code_formula = models.PayrollCode(
@@ -126,12 +144,26 @@ def seed_db() -> None:
             description="Calculated tax",
             variable="tax",
             code_type="formula",
-            tags=["TAX"],
+            tags=["TAX","DED"],
             value=0.0,
             formula="basic_salary * 0.1",
-            order=2
+            order=2,
+            effective_from=datetime(2025,1,1,tzinfo=timezone.utc)
         )
         payroll_code_formula.save()
+        payroll_code_net_pay = models.PayrollCode(
+            company=company,
+            name="Net Pay",
+            description="Calculated net pay",
+            variable="net_pay",
+            code_type="formula",
+            tags=["NET"],
+            value=0.0,
+            formula="basic_salary - tax",
+            order=3,
+            effective_from=datetime(2025,1,1,tzinfo=timezone.utc)
+        )
+        payroll_code_net_pay.save()
         computation = models.Computation(
             company=company,
             notes=fake.sentence(),
@@ -155,23 +187,25 @@ def seed_db() -> None:
             value=payroll_code_formula.value if payroll_code_formula.value else 0.0
         )
         computation_component_tax.save()
-    print("Database seeded successfully!")
-
-
 
 @pytest.fixture(scope="session")
-def db() -> None:
+def db():
+    shutil.copytree("templates/Master Company", "templates/Test Company1", dirs_exist_ok=True)
     connect('mongoenginetest', host='mongodb://localhost', mongo_client_class=mongomock.MongoClient, uuidRepresentation="standard")
+    utils.initialize_db(settings, is_test=True)
     seed_db()
-    # yield
+    yield
+    shutil.rmtree("templates/Test Company1", ignore_errors=True)
+    shutil.rmtree("reports/Test Company1", ignore_errors=True)
 
-    
-# @pytest.fixture(scope="session")
-# def client(db):
-#     def get_test_db():
-#         try:
-#             yield db
-#         finally:
-#             pass
-#     app.dependency_overrides[get_db] = get_test_db
-#     yield TestClient(app)
+@pytest.fixture(scope="session")
+def client():
+    from api import app
+    from depends import get_db
+    def get_test_db():
+        try:
+            yield db
+        finally:
+            pass
+    app.dependency_overrides[get_db] = get_test_db
+    yield TestClient(app)

@@ -149,8 +149,8 @@ async def test_payroll_concert(db):
     })
     company = await crud.create_obj(models.Company, company_create)
     staff_create = schemas.StaffCreate(**{
-        "user": str(models.User.objects.first().id),
-        "company": str(company.id),
+        "user": {"id": str(models.User.objects.first().id)},
+        "company": {"id": str(company.id)},
         "first_name": fake.first_name(),
         "last_name": fake.last_name(),
         "job_title": fake.job(),
@@ -162,7 +162,7 @@ async def test_payroll_concert(db):
     staff = await crud.create_obj(models.Staff, staff_create)
     assert staff is not None
     payroll_code_create_basic_salary = schemas.PayrollCodeCreate(**{
-        "company": str(company.id),
+        "company": {"id": str(company.id)},
         "name": "Basic Salary",
         "description": "Basic salary input",
         "variable": "basic_salary",
@@ -175,7 +175,7 @@ async def test_payroll_concert(db):
     })
     payroll_code_basic_salary = await crud.create_obj(models.PayrollCode, payroll_code_create_basic_salary)
     payroll_code_create_tax = schemas.PayrollCodeCreate(**{
-        "company": str(company.id),
+        "company": {"id": str(company.id)},
         "name": "Tax",
         "description": "Calculated tax",
         "variable": "tax",
@@ -188,20 +188,20 @@ async def test_payroll_concert(db):
     })
     payroll_code_tax = await crud.create_obj(models.PayrollCode, payroll_code_create_tax)
     computation_create = schemas.ComputationCreate(**{
-        "company": str(company.id),
+        "company": {"id": str(company.id)},
         "notes": "Test computation",
         "payroll_period_start": "2021-01-01T00:00:00",
         "payroll_period_end": "2021-01-31T23:59:59",
         "status": "draft",
-        "generated_by": str(staff.id)
+        "generated_by": {"id": str(models.User.objects.first().id)}
     })
     computation = await crud.create_obj(models.Computation, computation_create)
     assert computation is not None
     assert computation.id is not None
     computation_component_create_basic_salary = schemas.ComputationComponentCreate(**{
-        "computation": str(computation.id),
-        "payroll_component": str(payroll_code_basic_salary.id),
-        "staff": str(staff.id),
+        "computation": {"id": str(computation.id)},
+        "payroll_component": {"id": str(payroll_code_basic_salary.id)},
+        "staff": {"id": str(staff.id)},
         "value": 500_000.0
     })
     await crud.create_obj(models.ComputationComponent, computation_component_create_basic_salary)

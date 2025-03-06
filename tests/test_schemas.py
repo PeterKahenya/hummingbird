@@ -40,7 +40,7 @@ def test_auth_schemas(db):
     content_type_dict = schemas.ContentTypeInDB.model_validate(content_type.to_dict()).model_dump()
     assert content_type_dict["id"] == str(content_type.id)
     assert content_type_dict["model"] == content_type.model
-    assert content_type_dict["object_id"] == str(content_type.object_id)
+    assert content_type_dict["object_id"] == (str(content_type.object_id) if content_type.object_id else None)
     assert content_type_dict["type_of_content"] == content_type.type_of_content
 
     # test permission create schema
@@ -272,8 +272,8 @@ def test_payroll_schemas(db):
     company = models.Company.objects.first()
     user = models.User.objects.first()
     staff_create = schemas.StaffCreate(**{
-        "user": str(user.id),
-        "company": str(company.id),
+        "user": {"id": str(user.id)},
+        "company": {"id": str(company.id)},
         "first_name": fake.first_name(),
         "last_name": fake.last_name(),
         "job_title": fake.job(),
@@ -326,7 +326,7 @@ def test_payroll_schemas(db):
     # test payroll code schema
     company = models.Company.objects.first()
     payroll_code_create = schemas.PayrollCodeCreate(**{
-        "company": str(company.id),
+        "company": {"id": str(company.id)},
         "name": "BASE",
         "description": "Base Salary",
         "variable": "base_salary",
@@ -363,12 +363,12 @@ def test_payroll_schemas(db):
     # test computation schema
     company = models.Company.objects.first()
     payroll_computation_create = schemas.ComputationCreate(**{
-        "company": str(company.id),
+        "company": {"id": str(company.id)},
         "notes": fake.text(),
         "payroll_period_start": fake.date_time_this_year(),
         "payroll_period_end": fake.date_time_this_year(),
         "status": "draft",
-        "generated_by": str(user.id)
+        "generated_by": {"id": str(models.User.objects.first().id)}
     })
     assert payroll_computation_create.company is not None
     assert payroll_computation_create.notes is not None
