@@ -58,7 +58,19 @@ async def search_objs(model: models.BaseDocument, query: str):
 
 async def create_obj(model: models.BaseDocument, obj_in: schemas.BaseModel):
     try:
-        obj = model(**obj_in.model_dump())
+        obj = model()
+        for field, field_type in model._fields.items():
+            if isinstance(field_type, mongoengine.ReferenceField):
+                if hasattr(obj_in, field):
+                    setattr(obj, field, model._fields[field].document_type.objects.get(id=bson.ObjectId(getattr(obj_in, field).id)))
+                    obj_in.__delattr__(field)
+            elif isinstance(field_type, mongoengine.ListField) and isinstance(field_type.field, mongoengine.ReferenceField):
+                if hasattr(obj_in, field):
+                    setattr(obj, field, [model._fields[field].field.document_type.objects.get(id=bson.ObjectId(item.id)) for item in getattr(obj_in, field)])
+                    obj_in.__delattr__(field)
+            else:
+                if hasattr(obj_in, field):
+                    setattr(obj, field, getattr(obj_in, field))
         obj.save()
         return obj
     except Exception as e:
@@ -67,6 +79,17 @@ async def create_obj(model: models.BaseDocument, obj_in: schemas.BaseModel):
 async def update_obj(model: models.BaseDocument, id: str, obj_in: schemas.BaseModel):
     try:
         obj = await get_obj_or_404(model, id)
+        for field, field_type in model._fields.items():
+            if isinstance(field_type, mongoengine.ReferenceField):
+                if hasattr(obj_in, field):
+                    setattr(obj, field, model._fields[field].document_type.objects.get(id=bson.ObjectId(getattr(obj_in, field).id)))
+                    obj.save()
+                    obj_in.__delattr__(field)
+            elif isinstance(field_type, mongoengine.ListField) and isinstance(field_type.field, mongoengine.ReferenceField):
+                if hasattr(obj_in, field):
+                    setattr(obj, field, [model._fields[field].field.document_type.objects.get(id=bson.ObjectId(item.id)) for item in getattr(obj_in, field)])
+                    obj.save()
+                    obj_in.__delattr__(field)
         obj.update(**obj_in.model_dump(exclude_unset=True))
         obj.reload()
         return obj
@@ -89,7 +112,7 @@ async def paginate(
         size: int = 10, 
         sort_by: str = "created_at,desc",
         **params
-        ):
+        ) -> schemas.ListResponse:
     try:
         if q:
             data = await search_objs(model, q)

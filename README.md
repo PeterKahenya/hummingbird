@@ -4,4 +4,8 @@ Flexible, Minimalist payroll software
 
 ## ERD
 
-![ERD](erd.png)
+![ERD](docs/erd.png)
+
+## Flowchart
+
+![Flowchart](docs/flowchart.png)

@@ -9,3 +9,5 @@ mongomock==4.3.0
 pytest-asyncio
 faker
 nanoid
+requests
+honeybadger==0.21

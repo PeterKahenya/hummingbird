@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Payslip</title>
+    <style>
+        /* Reset CSS */
+        @font-face {
+            font-family: 'Rockwell';
+            src: url('ROCK.tff') format('ttf');
+            font-weight: lighter;
+            font-style: italic;
+        }
+
+        html {
+            margin: 0;
+            padding: 0;
+            background-color: #f9f5e4;
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Rockwell';
+            font-size: 12px;
+            background-color: #f8f5e6;
+            padding-left: 50px;
+            padding-right: 50px;
+            margin: 0;
+            background-color: #f9f5e4;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* Header Styling */
+        .header {
+            font-size: 18px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            background-color: #3F3F3F;
+            color: #f9f5e4;
+            padding: 10px;
+            font-size: 12px;
+            text-align: left;
+            width: 20%;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: end;
+        }
+
+        .header-right {
+            background-color: #4bacc6;
+            padding: 5px;
+            text-align: left;
+        }
+
+        .doc-title {
+            font-size: 50px;
+            font-family: 'RockwellStd';
+            color: #3F3F3F;
+        }
+
+        .doc-series {
+            font-size: 12px;
+            color: #ffffff;
+            text-align: center;
+        }
+
+        .subheader {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .payslip-period {
+            text-align: right;
+            padding: 10px;
+        }
+
+        /* Staff Details */
+        .staff-details {
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .staff-details td {
+            padding: 5px;
+        }
+
+        /* Table Styling */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .table th,
+        .table td {
+            border: 0.5px dashed #666;
+            /* Ensures a strong border */
+            padding: 5px;
+            /* Increased padding for better appearance */
+            text-align: right;
+        }
+
+        .table th {
+            background-color: #444;
+            color: black;
+            text-transform: uppercase;
+        }
+
+                /* Alternating Row Colors */
+        .table tr:nth-child(even) {
+            background-color: #f2f2f2;  /* Light gray for even rows */
+        }
+
+        .table tr:nth-child(odd) {
+            background-color: #fdf0b3;  /* White for odd rows */
+        }
+
+        /* Summary Section */
+        .total-section {
+            text-align: right;
+            font-weight: bold;
+            background-color: #ddd;
+            padding: 5px;
+        }
+
+        .net-pay {
+            font-weight: bold;
+            background-color: black;
+            color: white;
+            padding: 10px;
+            text-align: right;
+        }
+
+        .summary {
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-end;
+            align-items: flex-end;
+            width: 100%;
+        }
+
+        .summary-sections {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 35%;
+        }
+
+        .summary-section {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-around;
+            ;
+            margin: 2px;
+        }
+
+        .summary-section-title {
+            width: 50%;
+            text-align: left;
+            padding: 5px;
+            background-color: #4bacc6;
+            color: #222;
+        }
+
+        .summary-section-value {
+            width: 50%;
+            text-align: right;
+            padding: 5px;
+            font-weight: bold;
+            font-family: 'Courier New', Courier, monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="">
+        <!-- Header Section -->
+        <div class="header">
+            <div class="header-left">
+                <div style="font-weight: bolder; font-size: large;">
+                    {{ company.name }}
+                </div>
+                <div>Payroll Department</div>
+            </div>
+            <div class="header-right">
+                <div class="doc-title">PAYSLIP</div>
+                <div class="doc-series">****************</div>
+            </div>
+        </div>
+        <div class="subheader">
+            <!-- Company -->
+            <div class="company-details">
+                {{ company.email }}<br>
+                {{ company.phone }}<br>
+                {{ company.address }}<br>
+                {{ company.pin_number }}
+            </div>
+
+            <!-- Pay Period -->
+            <div class="payslip-period">
+                Date From: {{ date_from }}<br>
+                Date To: {{ date_to }}
+            </div>
+        </div>
+
+
+        <!-- Staff Details -->
+        <div class="staff-details">
+            <div style="background-color: #3F3F3F; color: #f9f5e4; width: 150px; padding: 5px;">STAFF DETAILS</div>
+            <div>{{ employee.name }}</div>
+            <div>{{ employee.position }}</div>
+            <div>{{ employee.email }}</div>
+            <div>{{ employee.phone }}</div>
+            <div>{{ employee.staff_id }}</div>
+            <div>{{ employee.pin_number }}</div>
+        </div>
+
+        <!-- Payslip Items -->
+        <table class="table">
+            <tr>
+                <th  style="text-align: left;">ITEM</th>
+                <th  style="text-align: left;">DESCRIPTION</th>
+                <th  style="text-align: left;">TYPE</th>
+                <th  style="text-align: left;">AMOUNT</th>
+            </tr>
+            {% for item in payslip_items %}
+            <tr>
+                <td style="text-align: left;">{{ item.name }}</td>
+                <td style="text-align: left;">{{ item.description }}</td>
+                <td style="text-align: left;">{{ item.type }}</td>
+                <td style="font-family: 'Courier New', Courier, monospace;">Ksh {{ item.value | format_currency }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <!-- Summary -->
+        <div class="summary">
+            <div class="summary-sections">
+                <div class="summary-section">
+                    <div class="summary-section-title">
+                        TOTAL EARNINGS
+                    </div>
+                    <div class="summary-section-value">
+                        Ksh {{ total_earnings | format_currency }}
+                    </div>
+                </div>
+                <div class="summary-section">
+                    <div class="summary-section-title">
+                        TOTAL DEDUCTIONS
+                    </div>
+                    <div class="summary-section-value">
+                        Ksh {{ total_deductions | format_currency }}
+                    </div>
+                </div>
+                <div class="summary-section">
+                    <div class="summary-section-title">
+                        NET PAY
+                    </div>
+                    <div class="summary-section-value">
+                        Ksh {{ net_pay | format_currency }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer style="margin-bottom: 20px;">
+        <div style="text-align: center; margin-top: 20px;">
+            This is a computer generated document and does not require a signature.
+        </div>
+    </footer>
+</body>
+
+</html>

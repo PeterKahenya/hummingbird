@@ -25,7 +25,7 @@ class ModelInDBBase(ModelBase):
 
 class ContentTypeInDB(ModelInDBBase):
     model: str
-    object_id: str
+    object_id: Optional[str]
     type_of_content: str
 
 class PermissionCreate(BaseModel):
@@ -55,6 +55,7 @@ class RoleUpdate(BaseModel):
 
 class RoleInDB(ModelInDBBase):
     name: str
+    description: str
     permissions: List[PermissionInDB] | None = []
 
 class UserCreate(BaseModel):
@@ -180,8 +181,8 @@ class CompanyInDB(ModelInDBBase):
     address: str
 
 class StaffCreate(BaseModel):
-    user: str
-    company: str
+    user: ModelBase
+    company: ModelBase
     first_name: str
     last_name: str
     job_title: str
@@ -226,8 +227,8 @@ class StaffUpdate(BaseModel):
     bank_branch: Optional[str] = None
 
 class StaffInDB(ModelInDBBase):
-    user: ModelInDBBase
-    company: ModelInDBBase
+    user: ModelBase
+    company: ModelBase
     first_name: str
     last_name: str
     job_title: str
@@ -244,13 +245,13 @@ class StaffInDB(ModelInDBBase):
     is_active: bool
     joined_on: datetime
     departed_on: Optional[datetime] = None
-    bank_account_number: str
-    bank_name: str
-    bank_swift_code: str
-    bank_branch: str
+    bank_account_number: Optional[str] = None
+    bank_name: Optional[str] = None
+    bank_swift_code: Optional[str] = None
+    bank_branch: Optional[str] = None
 
 class PayrollCodeCreate(BaseModel):
-    company: str
+    company: ModelBase
     name: str
     description: Optional[str] = None
     variable: str
@@ -285,12 +286,12 @@ class PayrollCodeInDB(ModelInDBBase):
     effective_from: datetime
 
 class ComputationCreate(BaseModel):
-    company: str
+    company: ModelBase
     payroll_period_start: datetime
     payroll_period_end: datetime
     notes: Optional[str] = None
     status: str
-    generated_by: str
+    generated_by: ModelBase
 
 class ComputationUpdate(BaseModel):
     payroll_period_start: Optional[datetime] = None
@@ -308,9 +309,9 @@ class ComputationInDB(ModelInDBBase):
     generated_by: ModelInDBBase
 
 class ComputationComponentCreate(BaseModel):
-    computation: str
-    payroll_component: str
-    staff: str
+    computation: ModelBase
+    payroll_component: ModelBase
+    staff: ModelBase
     value: Decimal
 
 class ComputationComponentInDB(ModelInDBBase):
