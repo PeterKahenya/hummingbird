@@ -8,7 +8,7 @@ class AppSettings(BaseSettings):
     mongodb_host: str
     mongodb_port: str
     mongodb_database: str
-    honeybadger_api_key: str = "hbp_qAzar2kEUdZWmeuAwciHZievGV01OK1gNrUk"
+    honeybadger_api_key: str = "honeybadger_api_key"
     jwt_secret_key: str = "c6e5"
     jwt_algorithm: str = "HS256"
     access_token_expiry_minutes: int = 30
@@ -18,10 +18,13 @@ class AppSettings(BaseSettings):
     smsleopard_base_url: str = "https://smsleopard.com/api/v1"
     smsleopard_api_key: str = "smsleopard_api_key"
     smsleopard_api_secret: str = "sms"
+    superuser_email: str
+    superuser_phone: str
+    superuser_password: str
 
 settings = AppSettings()
 
-DB_URL = f"mongodb://{settings.mongodb_user}:{settings.mongodb_password}@{settings.mongodb_host}:{settings.mongodb_port}/{settings.mongodb_database}"
+DB_URL = f"mongodb://{settings.mongodb_user}:{settings.mongodb_password}@{settings.mongodb_host}:{settings.mongodb_port}/{settings.mongodb_database}?authSource=admin"
 DEFAULT_CONTENT_CLASSES = ["users", "roles", "permissions", "contenttypes", "clientapps", "bands", "companies", "staff", "payrollcodes", "computations", "computationcomponents"]
 DEFAULT_PERMISSIONS_CLASSES = ["create","read","update","delete"]
 

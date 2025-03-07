@@ -63,7 +63,7 @@ def initialize_master_company():
     net_pay.save()
     return master_company
 
-async def mailtrap_send_email(to: Tuple[str,str], subject: str, message: str) -> bool:
+def mailtrap_send_email(to: Tuple[str,str], subject: str, message: str) -> bool:
     try:
         to_email, to_name = to
         url = "https://send.api.mailtrap.io/api/send"
@@ -141,9 +141,8 @@ def initialize_db(settings: BaseSettings, is_test: bool = False):
         superuser.set_password(settings.superuser_password)
         superuser.save()
     # create default clientapp
-    if superuser.client_apps:
-        clientapp = superuser.client_apps[0]
-    else:
+    clientapp = models.ClientApp.objects(name="DefaultApp").first()
+    if not clientapp:
         clientapp = models.ClientApp(name="DefaultApp",description="Default Application",user=superuser)
         clientapp.save()
     if not is_test:
@@ -193,4 +192,12 @@ async def smsleopard_send_sms(phone: str, message: str) -> bool:
         else:
             raise Exception(f"{response.status_code} - {response.text}")
     except Exception as e:
+        raise e
+    
+
+if __name__ == '__main__':
+    try:
+        mailtrap_send_email(to=("kahenya0@gmail.com","System Admin"),subject="Hummingbird Superuser Credentials",message="Hello Admin, Your superuser phone number is: 0712345678")
+    except Exception as e:
+        print(f"Error initializing app: {e}")
         raise e
