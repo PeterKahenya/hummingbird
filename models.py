@@ -563,9 +563,6 @@ class PayrollCode(BaseDocument):
     
     def save(self, *args: Any, **kwargs: Any) -> Any:
         self.updated_at = datetime.now(tz=timezone.utc)
-        # check if there is another component with the same order and company variable and effective from
-        if PayrollCode.objects(company=self.company, order=self.order, effective_from=self.effective_from).count() > 0:
-            raise ValidationError("Another Payroll Code with the same order and effective date exists")
         return super(PayrollCode, self).save(*args, **kwargs)
 
 class Computation(BaseDocument):

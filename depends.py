@@ -22,14 +22,11 @@ oauth2_scheme = HummingbirdOAuth2PasswordBearer(tokenUrl="/api/auth/login")
 def get_db():
     """Initialize MongoDB connection."""
     try:
-        connect(
-            host=config.DB_URL
-        )
+        connect(host=config.DB_URL,alias="default")
     except Exception as e:
         print(f"Error connecting to MongoDB: {e}")
         raise e
-    finally:
-        disconnect()
+         
         
 async def get_app(client_id: Annotated[str, Form()], client_secret: Annotated[str, Form()], db = Depends(get_db)) -> models.ClientApp:
     clientapp = models.ClientApp.objects.filter(client_id=client_id,client_secret=client_secret).first()
