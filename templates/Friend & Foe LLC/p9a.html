@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Payslip</title>
+    <style>
+        /* Reset CSS */
+        @font-face {
+            font-family: 'Rockwell';
+            src: url('ROCK.tff') format('ttf');
+            font-weight: lighter;
+            font-style: italic;
+        }
+
+        body { font-family: Arial, sans-serif; font-size: 12px; }
+        .header { text-align: center; font-weight: bold; font-size: 14px; }
+        th, td { border: 1px solid black; padding: 5px; text-align: right; }
+        th { background-color: #f2f2f2; }
+        body { font-family: Arial, sans-serif; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid black; padding: 5px; text-align: right; }
+        th { background-color: #f2f2f2; }
+        .header { text-align: center; font-weight: bold; font-size: 14px; }
+        .important { font-size: 10px; margin-top: 10px; }
+
+        html {
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        KENYA REVENUE AUTHORITY<br>
+        INCOME TAX DEPARTMENT<br>
+        TAX DEDUCTION CARD YEAR: {{ date_from.year }}
+    </div>
+    
+    <p><strong>EMPLOYER'S NAME:</strong> {{ company.name }}</p>
+    <p><strong>EMPLOYER'S PIN:</strong> {{ company.pin_number }}</p>
+    <p><strong>EMPLOYEE'S MAIN NAME:</strong> {{ employee.name }}</p>
+    <p><strong>EMPLOYEE'S PIN:</strong> {{ employee.pin_number }}</p>
+    <p><strong>EMPLOYEE'S POSITION:</strong> {{ employee.position }}</p>
+    
+    <table>
+        <tr>
+            <th>MONTH</th>
+            <th>BASIC SALARY (Kshs)</th>
+            <th>TAX (Kshs)</th>
+            <th>NET PAY (Kshs)</th>
+        </tr>
+        <!-- {{ monthly_payroll}} -->
+        {% for month,data in monthly_payroll.items() %}
+        <tr>
+            
+            {% if data %}
+                <td> {{month}} </td>
+                <td>{{ data.basic_salary | format_currency }}</td>
+                <td>{{ data.tax | format_currency }}</td>
+                <td>{{ data.net_pay | format_currency }}</td>
+            {% else %}
+                <td> {{month}} </td>
+                <td>0.00</td>
+                <td>0.00</td>
+                <td>0.00</td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+        <tr>
+            <td><strong>TOTALS</strong></td>
+            <td><strong>{{ totals.basic_salary | format_currency }}</strong></td>
+            <td><strong>{{ totals.tax | format_currency}}</strong></td>
+            <td><strong>{{ totals.net_pay | format_currency }}</strong></td>
+        </tr>
+    </table>
+    
+    <p class="important"><strong>IMPORTANT:</strong></p>
+    <p class="important">1. Use P9A (a) For all liable employees and (b) where director/employee received benefits in addition to cash emoluments.</p>
+    <p class="important">2. Deductible interest in respect of any month must not exceed Kshs 8,333, except for December where the amount shall be Kshs 8,337.</p>
+</body>
+</html>

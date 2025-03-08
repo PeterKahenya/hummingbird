@@ -45,6 +45,7 @@ async def verify_phone_verify(phone: str = Form(...), code: str = Form(...), db 
         raise HTTPException(status_code=404,detail={"message":"User not found"})
     if not await user.validate_verification_code(code,mode="phone"):
         raise HTTPException(status_code=400,detail={"message":"Invalid verification code"})
+    user.save()
     return {"message":"Phone verified", "success":True, "phone":user.phone}
 
 @router.post("/verify-email/request",status_code=200,tags=["Authenticate"])
@@ -58,7 +59,7 @@ async def verify_email_request(email: str = Form(...), db = Depends(get_db), app
             mode="email"
         )
     message = f"Your hummingbird verification code is {user.email_verification_code} please enter it to verify your email"
-    await utils.mailtrap_send_email(to=(user.email,user.name),subject="Hummingbird Email Verification Code",message=message)
+    utils.mailtrap_send_email(to=(user.email,user.name),subject="Hummingbird Email Verification Code",message=message)
     return {"message":"Email verification code sent", "success":True, "email":user.email}
 
 @router.post("/verify-email/verify",status_code=200,tags=["Authenticate"])
@@ -68,7 +69,6 @@ async def verify_email_verify(email: str = Form(...), code: str = Form(...), db 
         raise HTTPException(status_code=404,detail={"message":"User not found"})
     if not await user.validate_verification_code(code,mode="email"):
         raise HTTPException(status_code=400,detail={"message":"Invalid verification code"})
-    user.is_verified = True
     user.save()
     return {"message":"Email verified", "success":True, "email":user.email}
 
@@ -323,7 +323,9 @@ async def update_app(
                         db = Depends(get_db)
                     ) -> schemas.ClientAppInDB:
     try:
+        print(app_update)
         app_db: models.ClientApp = await crud.update_obj(model=models.ClientApp,id=app_id,obj_in=app_update)
+        print(app_db)
         return app_db.to_dict()
     except Exception as e:
         logger.error(f"Error: {str(e)}")

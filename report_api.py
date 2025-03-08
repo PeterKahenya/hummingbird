@@ -20,6 +20,26 @@ from openpyxl import Workbook, load_workbook
 
 router = APIRouter(dependencies=[Depends(get_db)])
 
+from PyPDF2 import PdfReader, PdfWriter
+
+def add_password_to_pdf(input_pdf, output_pdf, password):
+    reader = PdfReader(input_pdf)
+    writer = PdfWriter()
+
+    # Copy all pages to the new PDF
+    for page in reader.pages:
+        writer.add_page(page)
+
+    # Encrypt with password
+    writer.encrypt(password)
+
+    # Save the protected PDF
+    with open(output_pdf, "wb") as f:
+        writer.write(f)
+
+    print(f"Password-protected PDF saved as {output_pdf}")
+
+
 def format_currency(value):
     """Formats numbers as currency with two decimal places."""
     return f"{float(value):,.2f}" if value else "0.00"
@@ -79,6 +99,7 @@ def generate_payslip(computation_db: models.Computation, staff_db: models.Staff)
     os.makedirs(payslips_dir, exist_ok=True)
     payslip_path = f"{payslips_dir}/{staff_db.full_name +'-'+str(staff_db.id)}.pdf"
     pdfkit.from_string(payroll_html_string, payslip_path, options=options, configuration=config)
+    add_password_to_pdf(payslip_path, payslip_path, staff_db.date_of_birth.strftime("%Y%m%d"))
     return payslip_path
 
 def generate_p9a(computations: Dict[int, models.Computation|None], staff_db: models.Staff, company_db: models.Company, period_start: datetime.datetime, period_end: datetime.datetime):
@@ -124,9 +145,10 @@ def generate_p9a(computations: Dict[int, models.Computation|None], staff_db: mod
     period = period_start.strftime("%Y")
     payslips_dir = f"reports/{company_db.name}/{period}/p9as"
     os.makedirs(payslips_dir, exist_ok=True)
-    payslip_path = f"{payslips_dir}/{staff_db.full_name +'-'+str(staff_db.id)}.pdf"
-    pdfkit.from_string(payroll_html_string, payslip_path, options=options, configuration=config)
-    return payslip_path
+    p9a_path = f"{payslips_dir}/{staff_db.full_name +'-'+str(staff_db.id)}.pdf"
+    pdfkit.from_string(payroll_html_string, p9a_path, options=options, configuration=config)
+    add_password_to_pdf(p9a_path, p9a_path, staff_db.date_of_birth.strftime("%Y%m%d"))
+    return p9a_path
 
 # Generate payslips
 @router.post("/computations/{computation_id}/generate-payslips", 
