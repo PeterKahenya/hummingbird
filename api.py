@@ -29,14 +29,3 @@ app.add_middleware(
 @app.get("/")
 def read_root(db = Depends(get_db)):
     return {"message": "Welcome to Hummingbird API"}
-
-
-# if __name__ == "__main__":
-#     import uvicorn
-#     from config import settings
-#     uvicorn.run(app="api:app", 
-#                 host=settings.service_host, 
-#                 port=settings.service_port, 
-#                 reload=settings.service_reload, 
-#                 workers=settings.service_workers
-#             )

@@ -1,9 +1,13 @@
+from decimal import ROUND_HALF_UP, Decimal
 import io
 import json
+from pprint import pprint
+import secrets
 from typing import Any, Dict, List
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from fastapi import Depends
 from fastapi.responses import FileResponse, StreamingResponse
+import mongoengine
 import crud
 import schemas
 import models
@@ -32,7 +36,7 @@ async def create_company(
     except Exception as e:
         logger.error(f"Error creating company: {str(e)}")
         raise HTTPException(status_code=500,detail={
-            "message":"An unexpected error occurred"
+            "message":f"An unexpected {e} error occurred"
         })
     
 @router.get("/companies",
@@ -72,12 +76,13 @@ async def update_company(
             db: Any = Depends(get_db)
         ):
     try:
+        print(company)
         company_db: models.Company = await crud.update_obj(model=models.Company, id=company_id, obj_in=company)
         return company_db.to_dict()
     except Exception as e:
         logger.error(f"Error updating company: {str(e)}")
         raise HTTPException(status_code=500,detail={
-            "message":"An unexpected error occurred"
+            "message": f"An unexpected error {e} occurred"
         })
     
 @router.delete("/companies/{company_id}",
@@ -113,13 +118,111 @@ async def create_staff(
             db: Any = Depends(get_db)
         ):
     try:
+        user = await crud.get_obj_or_404(model=models.User, id=staff.user.id)
+        if models.Staff.objects.filter(user=user).first():
+            raise HTTPException(status_code=400,detail={
+                "message":"User already has a staff account"
+            })
         staff_db = await crud.create_obj(model=models.Staff, obj_in=staff)
         return staff_db.to_dict()
     except Exception as e:
         logger.error(f"Error creating staff: {str(e)}")
         raise HTTPException(status_code=500,detail={
-            "message":"An unexpected error occurred"
+            "message": f"{e}"
         })
+
+# get staff template url
+@router.get("/get-staff-template",
+            tags=["Staff"],
+            status_code=200
+        )
+async def get_staff_template(
+            user: models.User = Depends(authorize(perm="create_staff")),
+            db: Any = Depends(get_db),
+            request: Request = None
+        ):
+    staff_template_path = os.path.join("templates","Staff Template.xlsx")
+    return {"url":f"{request.base_url}payroll/staff-template/{staff_template_path}"}
+
+# download staff template
+@router.get("/staff-template/{file_path:path}",status_code=200)
+async def download(file_path:str, user: models.User = Depends(authorize(perm="create_staff"))) -> FileResponse:
+    if os.path.exists(file_path):
+        return FileResponse(file_path, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",filename="Staff Template.xlsx")
+    else:
+        raise HTTPException(status_code=404,detail={"message":"No such file was found"})
+
+# upload staff data to a given company
+@router.post("/companies/{company_id}/upload-staff",
+            tags=["Staff"],
+            status_code=200,
+            response_model=List[schemas.StaffInDB]
+        )
+async def upload_staff(
+            company_id: str,
+            user: models.User = Depends(authorize(perm="create_staff")),
+            file: UploadFile = File(...)
+        ):
+    company_db = await crud.get_obj_or_404(model=models.Company, id=company_id)
+    contents = await file.read()
+    df = pd.read_excel(io.BytesIO(contents), sheet_name="Staff Template")
+    # ensure that the file has at least 2 rows i.e at least one staff data
+    if len(df) == 0:
+        raise HTTPException(status_code=400,detail={"message":"No data found in the file"})
+    # ensure no empty rows or columns
+    if not df.isnull().values.any():
+        raise HTTPException(status_code=400,detail={"message":"Empty rows or columns found in the file"})
+    # ensure no users based on the email exist that already have staff accounts
+    for idx in df.index:
+        row = df.loc[idx]
+        user = models.User.objects.filter(email=row['User Email']).first()
+        if user and models.Staff.objects.filter(user=user).first():
+            raise HTTPException(status_code=400,detail={
+                "message":f"{idx} User with email {user.email} already has a staff account"
+            })
+    # loop through the rows and create staff objects where a user with 'User Email' does not exist, create one
+    staff_list = []
+    for idx in df.index:
+        row = df.loc[idx]
+        user = models.User.objects.filter(email=row['User Email']).first()
+        if not user:
+            user = models.User(
+                email=row['User Email'],
+                name=row['First Name'] + " " + row['Last Name'],
+                is_active=False
+            )
+            # generate a random password for the user
+            user.set_password(secrets.token_urlsafe(8))
+            user.save()
+            # TODO: send an email to the user to set their password      
+        staff = models.Staff(
+            user=user,
+            company=company_db,
+            first_name=row['First Name'],
+            last_name=row['Last Name'],
+            job_title=row['Job Title'],
+            department=row['Department'],
+            contact_email=row['Contact Email'],
+            contact_phone=str(row['Contact Phone']),
+            pin_number=row['PIN Number'],
+            staff_number=row['Staff Number'],
+            shif_number=row['SHIF Number'],
+            nssf_number=row['NSSF Number'],
+            nita_number=row['NITA Number'],
+            national_id_number=str(row['National ID Number']),
+            date_of_birth=row['Date of Birth'],
+            is_active=row['Is Active'],
+            joined_on=row['Joined On'],
+            departed_on=row["Departed On"] if isinstance(row.get('Departed On'), str) else None,
+            bank_account_number=str(row['Bank Account Number']),
+            bank_name=row['Bank Name'],
+            bank_swift_code=str(row['Bank Swift Code']),
+            bank_branch=row['Bank Branch'],
+        )
+        pprint(staff.to_dict())
+        staff.save()
+        staff_list.append(staff)
+    return [staff.to_dict() for staff in staff_list]
     
 @router.get("/staff",
             response_model=schemas.ListResponse,
@@ -288,10 +391,15 @@ async def create_payroll_code(
     try:
         code_db = await crud.create_obj(model=models.PayrollCode, obj_in=code)
         return code_db.to_dict()
+    except mongoengine.errors.NotUniqueError as e:
+        logger.error(f"Error creating payroll code: {str(e)}")
+        raise HTTPException(status_code=400,detail={
+            "message":"Payroll code with the same variable name, order, company and effective_from already exists"
+        })
     except Exception as e:
         logger.error(f"Error creating payroll code: {str(e)}")
         raise HTTPException(status_code=500,detail={
-            "message":"An unexpected error occurred"
+            "message": f"{e}"
         })
     
 @router.get("/codes",
@@ -333,6 +441,11 @@ async def update_payroll_code(
     try:
         code_db: models.PayrollCode = await crud.update_obj(model=models.PayrollCode, id=code_id, obj_in=code)
         return code_db.to_dict()
+    except mongoengine.errors.NotUniqueError as e:
+        logger.error(f"Error creating payroll code: {str(e)}")
+        raise HTTPException(status_code=400,detail={
+            "message":"Payroll code with the same variable name, order, company and effective_from already exists"
+        })
     except Exception as e:
         logger.error(f"Error updating payroll code: {str(e)}")
         raise HTTPException(status_code=500,detail={
@@ -422,7 +535,7 @@ async def update_computation(
     except Exception as e:
         logger.error(f"Error updating computation: {str(e)}")
         raise HTTPException(status_code=500,detail={
-            "message":"An unexpected error occurred"
+            "message": f"{e}"
         })
     
 @router.delete("/computations/{computation_id}",
@@ -489,7 +602,7 @@ async def get_compensations_template(
 @router.get("/files/{file_path:path}",status_code=200)
 async def download(file_path:str, user: models.User = Depends(authorize(perm="read_computations"))) -> FileResponse:
     if os.path.exists(file_path):
-        return FileResponse(file_path)
+        return FileResponse(file_path, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",filename="compensation.xlsx")
     else:
         raise HTTPException(status_code=404,detail={"message":"No such file was found"})
 
@@ -528,7 +641,7 @@ async def upload_compensation(
     # create computation components for each staff
     for idx in df.index[2:]:
         row = df.loc[idx]
-        staff = models.Staff.objects.filter(staff_number=row['staff_number']).first()
+        staff = models.Staff.objects.filter(staff_number=row['staff_number'], company=computation_db.company).first()
         for col in df.columns[1:]:
             payroll_code = models.PayrollCode.objects.filter(
                                                     company=computation_db.company,
@@ -558,10 +671,28 @@ async def run_computation(
     db: Any = Depends(get_db)
 ):
     computation_db = await crud.get_obj_or_404(model=models.Computation, id=computation_id)
-    async def run():
+    def convert_decimals(obj):
+        """Recursively convert Decimal values to rounded float values in a nested structure."""
+        if isinstance(obj, Decimal):
+            return float(obj.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))  # Round to 2 decimal places
+        elif isinstance(obj, dict):
+            return {k: convert_decimals(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_decimals(v) for v in obj]
+        return obj  # Return other types unchanged
+    async def run():        
         for staff,params in computation_db.run():
+            params.pop("__builtins__")
+            params.pop("Decimal")
+            params.pop("calculate_paye")
+            params.pop("calculate_nssf_contribution")
+            params = convert_decimals(params)
             yield json.dumps({
-                "staff":schemas.StaffInDB.model_validate(staff.to_dict()).model_dump_json(),
-                "payroll":params}).encode() + b"\n"
-    
+                "staff": {
+                    "id": str(staff.id),
+                    "staff_number": staff.staff_number,
+                    "name": staff.full_name
+                },
+                "params": params
+                }).encode() + b"\n"
     return StreamingResponse(content=run(),media_type="application/x-ndjson")
