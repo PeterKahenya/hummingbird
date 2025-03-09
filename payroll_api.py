@@ -20,7 +20,6 @@ import bson
 router = APIRouter(dependencies=[Depends(get_db)])
 
 # Companies API
-
 @router.post("/companies", 
             response_model=schemas.CompanyInDB, 
             tags=["Companies"], 
@@ -106,8 +105,10 @@ async def delete_company(
         raise HTTPException(status_code=500,detail={
             "message":"An unexpected error occurred"
         })
-    
+
+
 # Staff API
+# TODO: Check if the user sending the request has the permission perform the action within the company
 @router.post("/companies/{company_id}/staff",
             response_model=schemas.StaffInDB,
             tags=["Staff"],
@@ -149,7 +150,7 @@ async def get_staff_template(
 
 # download staff template
 @router.get("/staff-template/{file_path:path}",status_code=200)
-async def download(file_path:str, user: models.User = Depends(authorize(perm="create_staff"))) -> FileResponse:
+async def download(file_path:str, _: models.User = Depends(authorize(perm="create_staff"))) -> FileResponse:
     if os.path.exists(file_path):
         return FileResponse(file_path, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",filename="Staff Template.xlsx")
     else:
@@ -310,7 +311,8 @@ async def delete_staff(
         raise HTTPException(status_code=500,detail={
             "message": f"{e}"
         })
-    
+
+
 # Payroll Bands API
 @router.post("/bands",
             response_model=schemas.BandInDB,
@@ -394,18 +396,20 @@ async def delete_band(
     
 
 # Payroll Codes API
-@router.post("/codes",
+# TODO: Check if the user sending the request has the permission perform the action within the company
+@router.post("/companies/{company_id}/codes",
             response_model=schemas.PayrollCodeInDB,
             tags=["Payroll Codes"],
             status_code=201
         )
 async def create_payroll_code(
-            code: schemas.PayrollCodeCreate,
-            user: models.User = Depends(authorize(perm="create_payrollcodes")),
-            db: Any = Depends(get_db)
+            company_id: str,
+            code_create: schemas.PayrollCodeCreate,
+            _: models.User = Depends(authorize(perm="create_payrollcodes"))
         ):
     try:
-        code_db = await crud.create_obj(model=models.PayrollCode, obj_in=code)
+        company_db = await crud.get_obj_or_404(model=models.Company, id=company_id)
+        code_db = await crud.create_code(code_create=code_create, company=company_db)
         return code_db.to_dict()
     except mongoengine.errors.NotUniqueError as e:
         logger.error(f"Error creating payroll code: {str(e)}")
@@ -418,44 +422,57 @@ async def create_payroll_code(
             "message": f"{e}"
         })
     
-@router.get("/codes",
+@router.get("/companies/{company_id}/codes",
             response_model=schemas.ListResponse,
             tags=["Payroll Codes"],
             status_code=200
         )
 async def get_payroll_codes(
+            company_id: str,
             params: Dict = Depends(get_query_params),
-            user: models.User = Depends(authorize(perm="read_payrollcodes")),
-            db: Any = Depends(get_db)
+            _: models.User = Depends(authorize(perm="read_payrollcodes"))
         ) -> schemas.ListResponse:
+    company_db = await crud.get_obj_or_404(model=models.Company, id=company_id)
+    params['company'] = company_db
     return await crud.paginate(model=models.PayrollCode, schema=schemas.PayrollCodeInDB, **params)
 
-@router.get("/codes/{code_id}",
+@router.get("/companies/{company_id}/codes/{code_id}",
             response_model=schemas.PayrollCodeInDB,
             tags=["Payroll Codes"],
             status_code=200
         )
 async def get_payroll_code(
+            company_id: str,
             code_id: str,
-            user: models.User = Depends(authorize(perm="read_payrollcodes")),
-            db: Any = Depends(get_db)
+            _: models.User = Depends(authorize(perm="read_payrollcodes"))
         ):
-    code_db = await crud.get_obj_or_404(model=models.PayrollCode, id=code_id)
+    company_db = await crud.get_obj_or_404(model=models.Company, id=company_id)
+    code_db = models.PayrollCode.objects.filter(id=bson.ObjectId(code_id),company=company_db).first()
+    if not code_db:
+        raise HTTPException(status_code=404,detail={
+            "message":"Payroll code not found in the company"
+        })
     return code_db.to_dict()
 
-@router.put("/codes/{code_id}",
+@router.put("/companies/{company_id}/codes/{code_id}",
             response_model=schemas.PayrollCodeInDB,
             tags=["Payroll Codes"],
             status_code=200
         )
 async def update_payroll_code(
+            company_id: str,
             code_id: str,
-            code: schemas.PayrollCodeUpdate,
-            user: models.User = Depends(authorize(perm="update_payrollcodes")),
-            db: Any = Depends(get_db)
+            code_update: schemas.PayrollCodeUpdate,
+            _: models.User = Depends(authorize(perm="update_payrollcodes"))
         ):
     try:
-        code_db: models.PayrollCode = await crud.update_obj(model=models.PayrollCode, id=code_id, obj_in=code)
+        company_db = await crud.get_obj_or_404(model=models.Company, id=company_id)
+        code = models.PayrollCode.objects.filter(id=bson.ObjectId(code_id),company=company_db).first()
+        if not code:
+            raise HTTPException(status_code=404,detail={
+                "message":"Payroll code not found in the company"
+            })
+        code_db: models.PayrollCode = await crud.update_obj(model=models.PayrollCode, id=code_id, obj_in=code_update)
         return code_db.to_dict()
     except mongoengine.errors.NotUniqueError as e:
         logger.error(f"Error creating payroll code: {str(e)}")
@@ -468,16 +485,22 @@ async def update_payroll_code(
             "message":"An unexpected error occurred"
         })
     
-@router.delete("/codes/{code_id}",
+@router.delete("/companies/{company_id}/codes/{code_id}",
             tags=["Payroll Codes"],
             status_code=204
         )
 async def delete_payroll_code(
+            company_id: str,
             code_id: str,
-            user: models.User = Depends(authorize(perm="delete_payrollcodes")),
-            db: Any = Depends(get_db)
+            _: models.User = Depends(authorize(perm="delete_payrollcodes"))
         ):
     try:
+        company_db = await crud.get_obj_or_404(model=models.Company, id=company_id)
+        code = models.PayrollCode.objects.filter(id=bson.ObjectId(code_id),company=company_db).first()
+        if not code:
+            raise HTTPException(status_code=404,detail={
+                "message":"Payroll code not found in the company"
+            })
         is_deleted = await crud.delete_obj(model=models.PayrollCode, id=code_id)
         if is_deleted:
             return None
@@ -488,6 +511,7 @@ async def delete_payroll_code(
         raise HTTPException(status_code=500,detail={
             "message":"An unexpected error occurred"
         })
+
 
 # Computation API
 @router.post("/computations",

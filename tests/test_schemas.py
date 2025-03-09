@@ -324,7 +324,6 @@ def test_payroll_schemas(db):
     # test payroll code schema
     company = models.Company.objects.first()
     payroll_code_create = schemas.PayrollCodeCreate(**{
-        "company": {"id": str(company.id)},
         "name": "BASE",
         "description": "Base Salary",
         "variable": "base_salary",
@@ -335,7 +334,6 @@ def test_payroll_schemas(db):
         "order": 1,
         "effective_from": fake.date_time_this_year()
     })
-    assert payroll_code_create.company is not None
     assert payroll_code_create.name is not None
 
     payroll_code_update = schemas.PayrollCodeUpdate(**{

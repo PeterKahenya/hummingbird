@@ -172,7 +172,7 @@ async def test_payroll_concert(db):
         "order": 1,
         "effective_from": "2021-01-01T00:00:00"
     })
-    payroll_code_basic_salary = await crud.create_obj(models.PayrollCode, payroll_code_create_basic_salary)
+    payroll_code_basic_salary = await crud.create_code(payroll_code_create_basic_salary, company=company)
     payroll_code_create_tax = schemas.PayrollCodeCreate(**{
         "company": {"id": str(company.id)},
         "name": "Tax",
@@ -185,7 +185,7 @@ async def test_payroll_concert(db):
         "order": 2,
         "effective_from": "2021-01-01T00:00:00"
     })
-    payroll_code_tax = await crud.create_obj(models.PayrollCode, payroll_code_create_tax)
+    payroll_code_tax = await crud.create_code(payroll_code_create_tax, company=company)
     computation_create = schemas.ComputationCreate(**{
         "company": {"id": str(company.id)},
         "notes": "Test computation",

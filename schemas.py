@@ -250,7 +250,6 @@ class StaffInDB(ModelInDBBase):
     bank_branch: Optional[str] = None
 
 class PayrollCodeCreate(BaseModel):
-    company: ModelBase
     name: str
     description: Optional[str] = None
     variable: str

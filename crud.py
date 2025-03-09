@@ -91,6 +91,19 @@ async def create_staff(staff_create: schemas.StaffCreate, company: models.Compan
         return staff
     except Exception as e:
         raise e
+
+async def create_code(code_create: schemas.PayrollCodeCreate, company: models.Company):
+    try:
+        code = models.PayrollCode()
+        code.company = company
+        for field, field_type in models.PayrollCode._fields.items():
+            if hasattr(code_create, field):
+                setattr(code, field, getattr(code_create, field))
+        code.save()
+        code.reload()
+        return code
+    except Exception as e:
+        raise e
     
 async def update_obj(model: models.BaseDocument, id: str, obj_in: schemas.BaseModel):
     try:
@@ -131,6 +144,7 @@ async def paginate(
         ) -> schemas.ListResponse:
     try:
         if q:
+            # TODO: Search needs filtering to handle searches within constrained domains like staff in a company
             data = await search_objs(model, q)
         elif params and len(params) > 0:
             data = await filter_objs(model=model,params=params,sort_by=sort_by)
