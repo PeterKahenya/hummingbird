@@ -289,11 +289,17 @@ async def update_staff(
             status_code=204
         )
 async def delete_staff(
+            company_id: str,
             staff_id: str,
-            user: models.User = Depends(authorize(perm="delete_staff")),
-            db: Any = Depends(get_db)
+            _: models.User = Depends(authorize(perm="delete_staff"))
         ):
     try:
+        company_db = await crud.get_obj_or_404(model=models.Company, id=company_id)
+        staff = models.Staff.objects.filter(id=bson.ObjectId(staff_id),company=company_db).first()
+        if not staff:
+            raise HTTPException(status_code=404,detail={
+                "message":"Staff not found in the company"
+            })
         is_deleted = await crud.delete_obj(model=models.Staff, id=staff_id)
         if is_deleted:
             return None
@@ -302,7 +308,7 @@ async def delete_staff(
     except Exception as e:
         logger.error(f"Error deleting staff: {str(e)}")
         raise HTTPException(status_code=500,detail={
-            "message":"An unexpected error occurred"
+            "message": f"{e}"
         })
     
 # Payroll Bands API
