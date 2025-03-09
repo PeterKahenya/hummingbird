@@ -516,7 +516,7 @@ async def test_computations_api(mock_send_sms, mock_send_email,client,db):
         assert data["payroll"]["tax"] == 50_000
 
     # generate payslips
-    response = client.post(f"/reports/computations/{str(computation_id)}/generate-payslips",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.post(f"/reports/companies/{str(company_db.id)}/computations/{str(computation_id)}/generate-payslips",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/x-ndjson"
     for line in response.iter_lines():
@@ -534,8 +534,8 @@ async def test_computations_api(mock_send_sms, mock_send_email,client,db):
     year = computation_db.payroll_period_start.year
     period_start = datetime.datetime(year,1,1,0,0,0,0,tzinfo=datetime.timezone.utc)
     period_end = datetime.datetime(year,12,31,0,0,0,0,tzinfo=datetime.timezone.utc)
-    period_filter = f"?period_start={period_start.strftime('%Y-%m-%d %H:%M:%S')}&period_end={period_end.strftime('%Y-%m-%d %H:%M:%S')}" 
-    response = client.post(f"/reports/p9as/companies/{str(computation_db.company.id)}/generate{period_filter}",headers={"Authorization": f"Bearer {access_token}"})
+    period_filter = f"period_start={period_start.strftime('%Y-%m-%d %H:%M:%S')}&period_end={period_end.strftime('%Y-%m-%d %H:%M:%S')}" 
+    response = client.post(f"/reports/companies/{str(computation_db.company.id)}/generate-p9as?{period_filter}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/x-ndjson"
     for line in response.iter_lines():
@@ -549,7 +549,7 @@ async def test_computations_api(mock_send_sms, mock_send_email,client,db):
     assert response.content != None
     assert response.headers["content-type"] == "application/pdf"
     # generate company summary
-    response = client.post(f"/reports/computations/{str(computation_id)}/generate-payroll-report",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.post(f"/reports/companies/{str(company_db.id)}/computations/{str(computation_id)}/generate-payroll-report",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["url"] != None
     # download company summary

@@ -2,6 +2,7 @@ import datetime
 import json
 from typing import List, Optional
 from urllib import request
+import bson
 from fastapi import APIRouter, Request
 from fastapi import Depends
 from fastapi.responses import FileResponse, StreamingResponse
@@ -151,16 +152,22 @@ def generate_p9a(computations: Dict[int, models.Computation|None], staff_db: mod
     return p9a_path
 
 # Generate payslips
-@router.post("/computations/{computation_id}/generate-payslips", 
+@router.post("/companies/{company_id}/computations/{computation_id}/generate-payslips", 
             tags=["Reports"],
             status_code=200,
             response_model=List[schemas.ComputationComponentInDB]
         )
-async def generate_payslips(computation_id: str, request: Request, db=Depends(get_db)):
+async def generate_payslips(
+    company_id: str,
+    computation_id: str, 
+    request: Request, db=Depends(get_db)):
     """
     Generate payslips for each staff in a computation
     """
-    computation_db = await crud.get_obj_or_404(models.Computation, computation_id)
+    company_db = await crud.get_obj_or_404(models.Company, company_id)
+    computation_db = models.Computation.objects.filter(company=company_db, id=bson.ObjectId(computation_id)).first()
+    if not computation_db:
+        raise HTTPException(status_code=404,detail={"message":"No such computation was found"})
     staff = models.Staff.objects.filter(company=computation_db.company).all()
     async def generate():
         for staff_db in staff:
@@ -188,7 +195,7 @@ async def download_payslip(
         raise HTTPException(status_code=404,detail={"message":"No such file was found"})
     
 # Generate p9as
-@router.post("/p9as/companies/{company_id}/generate", 
+@router.post("/companies/{company_id}/generate-p9as", 
             tags=["Reports"],
             status_code=200,
         )
@@ -248,11 +255,12 @@ async def download_p9a(
         raise HTTPException(status_code=404,detail={"message":"No such file was found"})
     
 # Generate company payroll report
-@router.post("/computations/{computation_id}/generate-payroll-report", 
+@router.post("/companies/{company_id}/computations/{computation_id}/generate-payroll-report", 
             tags=["Reports"],
             status_code=200,
         )
 async def generate_payroll_report(
+                        company_id: str,
                         computation_id: str,
                         request:Request = None,
                     ):
@@ -264,7 +272,10 @@ async def generate_payroll_report(
         4. Computation
         5. Computation Data
     """
-    computation_db = await crud.get_obj_or_404(models.Computation, computation_id)
+    company_db = await crud.get_obj_or_404(models.Company, company_id)
+    computation_db = models.Computation.objects.filter(company=company_db, id=bson.ObjectId(computation_id)).first()
+    if not computation_db:
+        raise HTTPException(status_code=404,detail={"message":"No such computation was found"})
     company_db = await crud.get_obj_or_404(models.Company, computation_db.company.id)
     staff = models.Staff.objects.filter(company=computation_db.company).all()
     payroll_codes = models.PayrollCode.objects.filter(company=computation_db.company, effective_from__lte=computation_db.payroll_period_start).order_by("variable").all()
