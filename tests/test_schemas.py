@@ -273,7 +273,6 @@ def test_payroll_schemas(db):
     user = models.User.objects.first()
     staff_create = schemas.StaffCreate(**{
         "user": {"id": str(user.id)},
-        "company": {"id": str(company.id)},
         "first_name": fake.first_name(),
         "last_name": fake.last_name(),
         "job_title": fake.job(),
@@ -291,7 +290,6 @@ def test_payroll_schemas(db):
         "joined_on": fake.date_time()
     })
     assert staff_create.user is not None
-    assert staff_create.company is not None
     assert staff_create.first_name is not None
 
     # test staff update schema

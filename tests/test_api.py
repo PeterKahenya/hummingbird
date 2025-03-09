@@ -262,7 +262,6 @@ async def test_staff_api(mock_send_sms, mock_send_email,client,db):
     user = models.User.objects.first()
     staff_create = {
         "user": {"id": str(user.id)},
-        "company": {"id": str(company.id)},
         "first_name": fake.first_name(),
         "last_name": fake.last_name(),
         "job_title": fake.job(),
@@ -279,17 +278,17 @@ async def test_staff_api(mock_send_sms, mock_send_email,client,db):
         "is_active": True,
         "joined_on": fake.date_time().isoformat()
     }
-    response = client.post("/payroll/staff/",json=staff_create,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.post(f"/payroll/companies/{str(company.id)}/staff/",json=staff_create,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 201
     assert response.json()["first_name"] == staff_create["first_name"]
     # get staff
-    response = client.get("/payroll/staff/",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/payroll/companies/{str(company.id)}/staff/",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert len(response.json()["data"]) >= 1
     # get single staff
     staff_db = models.Staff.objects.filter(first_name=staff_create["first_name"]).first()
     staff_id = staff_db.id
-    response = client.get(f"/payroll/staff/{str(staff_id)}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/payroll/companies/{str(company.id)}/staff/{str(staff_id)}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["first_name"] == staff_db.first_name
     # update staff
@@ -310,11 +309,11 @@ async def test_staff_api(mock_send_sms, mock_send_email,client,db):
         "is_active": True,
         "joined_on": fake.date_time().isoformat()
     }
-    response = client.put(f"/payroll/staff/{str(staff_id)}",json=update_data,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.put(f"/payroll/companies/{str(company.id)}/staff/{str(staff_id)}",json=update_data,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["first_name"] == update_data["first_name"]
     # delete staff
-    response = client.delete(f"/payroll/staff/{str(staff_id)}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.delete(f"/payroll/companies/{str(company.id)}/staff/{str(staff_id)}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 204
     with pytest.raises(models.Staff.DoesNotExist):
         models.Staff.objects.get(id=staff_id)

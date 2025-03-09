@@ -182,7 +182,6 @@ class CompanyInDB(ModelInDBBase):
 
 class StaffCreate(BaseModel):
     user: ModelBase
-    company: ModelBase
     first_name: str
     last_name: str
     job_title: str

@@ -150,7 +150,6 @@ async def test_payroll_concert(db):
     company = await crud.create_obj(models.Company, company_create)
     staff_create = schemas.StaffCreate(**{
         "user": {"id": str(models.User.objects.first().id)},
-        "company": {"id": str(company.id)},
         "first_name": fake.first_name(),
         "last_name": fake.last_name(),
         "job_title": fake.job(),
@@ -159,7 +158,7 @@ async def test_payroll_concert(db):
         "staff_number": "auth",
         "national_id_number": "auth"
     })
-    staff = await crud.create_obj(models.Staff, staff_create)
+    staff = await crud.create_staff(staff_create, company)
     assert staff is not None
     payroll_code_create_basic_salary = schemas.PayrollCodeCreate(**{
         "company": {"id": str(company.id)},

@@ -77,6 +77,21 @@ async def create_obj(model: models.BaseDocument, obj_in: schemas.BaseModel):
     except Exception as e:
         raise e
     
+async def create_staff(staff_create: schemas.StaffCreate, company: models.Company):
+    try:
+        staff = models.Staff()
+        staff.company = company
+        staff.user = models.User.objects.get(id=bson.ObjectId(staff_create.user.id))
+        staff_create.__delattr__("user")
+        for field, field_type in models.Staff._fields.items():
+            if hasattr(staff_create, field):
+                setattr(staff, field, getattr(staff_create, field))
+        staff.save()
+        staff.reload()
+        return staff
+    except Exception as e:
+        raise e
+    
 async def update_obj(model: models.BaseDocument, id: str, obj_in: schemas.BaseModel):
     try:
         obj = await get_obj_or_404(model, id)
