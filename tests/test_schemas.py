@@ -359,14 +359,12 @@ def test_payroll_schemas(db):
     # test computation schema
     company = models.Company.objects.first()
     payroll_computation_create = schemas.ComputationCreate(**{
-        "company": {"id": str(company.id)},
         "notes": fake.text(),
         "payroll_period_start": fake.date_time_this_year(),
         "payroll_period_end": fake.date_time_this_year(),
         "status": "draft",
         "generated_by": {"id": str(models.User.objects.first().id)}
     })
-    assert payroll_computation_create.company is not None
     assert payroll_computation_create.notes is not None
     assert payroll_computation_create.payroll_period_start is not None
     assert payroll_computation_create.payroll_period_end is not None

@@ -514,18 +514,20 @@ async def delete_payroll_code(
 
 
 # Computation API
-@router.post("/computations",
+@router.post("/companies/{company_id}/computations",
             response_model=schemas.ComputationInDB,
             tags=["Computations"],
             status_code=201
         )
 async def create_computation(
-            computation: schemas.ComputationCreate,
-            user: models.User = Depends(authorize(perm="create_computations")),
-            db: Any = Depends(get_db)
-        ):
+        company_id: str,
+        computation_create: schemas.ComputationCreate,
+        _: models.User = Depends(authorize(perm="create_computations"))
+    ):
     try:
-        computation_db = await crud.create_obj(model=models.Computation, obj_in=computation)
+        company_db = await crud.get_obj_or_404(model=models.Company, id=company_id)
+        await crud.get_obj_or_404(model=models.User, id=str(computation_create.generated_by.id))
+        computation_db = await crud.create_computation(computation_create=computation_create, company=company_db)
         return computation_db.to_dict()
     except Exception as e:
         logger.error(f"Error creating computation: {str(e)}")
@@ -533,43 +535,56 @@ async def create_computation(
             "message":"An unexpected error occurred"
         })
 
-@router.get("/computations",
+@router.get("/companies/{company_id}/computations",
             response_model=schemas.ListResponse,
             tags=["Computations"],
             status_code=200
         )
 async def get_computations(
+            company_id: str,
             params: Dict = Depends(get_query_params),
-            user: models.User = Depends(authorize(perm="read_computations")),
-            db: Any = Depends(get_db)
+            _: models.User = Depends(authorize(perm="read_computations"))
         ) -> schemas.ListResponse:
+    company_db = await crud.get_obj_or_404(model=models.Company, id=company_id)
+    params['company'] = company_db
     return await crud.paginate(model=models.Computation, schema=schemas.ComputationInDB, **params)
 
-@router.get("/computations/{computation_id}",
+@router.get("/companies/{company_id}/computations/{computation_id}",
             response_model=schemas.ComputationInDB,
             tags=["Computations"],
             status_code=200
         )
 async def get_computation(
+            company_id: str,
             computation_id: str,
-            user: models.User = Depends(authorize(perm="read_computations")),
-            db: Any = Depends(get_db)
+            _: models.User = Depends(authorize(perm="read_computations"))
         ):
-    computation_db = await crud.get_obj_or_404(model=models.Computation, id=computation_id)
+    company_db = await crud.get_obj_or_404(model=models.Company, id=company_id)
+    computation_db = models.Computation.objects.filter(id=bson.ObjectId(computation_id),company=company_db).first()
+    if not computation_db:
+        raise HTTPException(status_code=404,detail={
+            "message":"Computation not found in the company"
+        })
     return computation_db.to_dict()
 
-@router.put("/computations/{computation_id}",
+@router.put("/companies/{company_id}/computations/{computation_id}",
             response_model=schemas.ComputationInDB,
             tags=["Computations"],
             status_code=200
         )
 async def update_computation(
+            company_id: str,
             computation_id: str,
             computation: schemas.ComputationUpdate,
-            user: models.User = Depends(authorize(perm="update_computations")),
-            db: Any = Depends(get_db)
+            _: models.User = Depends(authorize(perm="update_computations"))
         ):
     try:
+        company_db = await crud.get_obj_or_404(model=models.Company, id=company_id)
+        computation_db = models.Computation.objects.filter(id=bson.ObjectId(computation_id),company=company_db).first()
+        if not computation_db:
+            raise HTTPException(status_code=404,detail={
+                "message":"Computation not found in the company"
+            })
         computation_db: models.Computation = await crud.update_obj(model=models.Computation, id=computation_id, obj_in=computation)
         return computation_db.to_dict()
     except Exception as e:
@@ -578,16 +593,22 @@ async def update_computation(
             "message": f"{e}"
         })
     
-@router.delete("/computations/{computation_id}",
+@router.delete("/companies/{company_id}/computations/{computation_id}",
             tags=["Computations"],
             status_code=204
         )
 async def delete_computation(
-            computation_id: str,
-            user: models.User = Depends(authorize(perm="delete_computations")),
-            db: Any = Depends(get_db)
-        ):
+        company_id: str,
+        computation_id: str,
+        _: models.User = Depends(authorize(perm="delete_computations"))
+    ):
     try:
+        company_db = await crud.get_obj_or_404(model=models.Company, id=company_id)
+        computation_db = models.Computation.objects.filter(id=bson.ObjectId(computation_id),company=company_db).first()
+        if not computation_db:
+            raise HTTPException(status_code=404,detail={
+                "message":"Computation not found in the company"
+            })
         is_deleted = await crud.delete_obj(model=models.Computation, id=computation_id)
         if is_deleted:
             return None
@@ -600,17 +621,22 @@ async def delete_computation(
         })
     
 # Other Computations API    
-@router.get("/computations/{computation_id}/compensation-template",
+@router.get("/companies/{company_id}/computations/{computation_id}/compensation-template",
             tags=["Computations"],
             status_code=200
         )
 async def get_compensations_template(
+            company_id: str,
             computation_id: str,
-            user: models.User = Depends(authorize(perm="read_computations")),
-            db: Any = Depends(get_db),
+            _: models.User = Depends(authorize(perm="read_computations")),
             request: Request = None
         ):
-    computation_db = await crud.get_obj_or_404(model=models.Computation, id=computation_id)
+    company_db = await crud.get_obj_or_404(model=models.Company, id=company_id)
+    computation_db = models.Computation.objects.filter(id=bson.ObjectId(computation_id),company=company_db).first()
+    if not computation_db:
+        raise HTTPException(status_code=404,detail={
+            "message":"Computation not found in the company"
+        })
     payroll_codes = models.PayrollCode.objects.filter(
                     company=computation_db.company,
                     code_type="input",
@@ -646,17 +672,23 @@ async def download(file_path:str, user: models.User = Depends(authorize(perm="re
     else:
         raise HTTPException(status_code=404,detail={"message":"No such file was found"})
 
-@router.post("/computations/{computation_id}/upload-compensation",
+@router.post("/companies/{company_id}/computations/{computation_id}/upload-compensation",
             tags=["Computations"],
             status_code=200,
             response_model=List[schemas.ComputationComponentInDB]
         )
 async def upload_compensation(
-    computation_id: str,
-    user: models.User = Depends(authorize(perm="read_computations")),
-    file: UploadFile = File(...)
-):
-    computation_db = await crud.get_obj_or_404(model=models.Computation, id=computation_id)
+        company_id: str,
+        computation_id: str,
+        _: models.User = Depends(authorize(perm="read_computations")),
+        file: UploadFile = File(...)
+    ):
+    company_db = await crud.get_obj_or_404(model=models.Company, id=company_id)
+    computation_db = models.Computation.objects.filter(id=bson.ObjectId(computation_id),company=company_db).first()
+    if not computation_db:
+        raise HTTPException(status_code=404,detail={
+            "message":"Computation not found in the company"
+        })
     contents = await file.read()
     df = pd.read_excel(io.BytesIO(contents))
     # ensure that the file has at least 3 rows i.e at least one staff data
@@ -700,17 +732,22 @@ async def upload_compensation(
     return [comp.to_dict() for comp in computation_components]
 
 # run computation
-@router.post("/computations/{computation_id}/run",
+@router.post("/companies/{company_id}/computations/{computation_id}/run",
             tags=["Computations"],
             status_code=200,
             response_model=List[schemas.ComputationComponentInDB]
         )
 async def run_computation(
+    company_id: str,
     computation_id: str,
-    user: models.User = Depends(authorize(perm="read_computations")),
-    db: Any = Depends(get_db)
+    _: models.User = Depends(authorize(perm="read_computations")),
 ):
-    computation_db = await crud.get_obj_or_404(model=models.Computation, id=computation_id)
+    company_db = await crud.get_obj_or_404(model=models.Company, id=company_id)
+    computation_db = models.Computation.objects.filter(id=bson.ObjectId(computation_id),company=company_db).first()
+    if not computation_db:
+        raise HTTPException(status_code=404,detail={
+            "message":"Computation not found in the company"
+        })
     def convert_decimals(obj):
         """Recursively convert Decimal values to rounded float values in a nested structure."""
         if isinstance(obj, Decimal):

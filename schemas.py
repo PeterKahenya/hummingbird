@@ -284,7 +284,6 @@ class PayrollCodeInDB(ModelInDBBase):
     effective_from: datetime
 
 class ComputationCreate(BaseModel):
-    company: ModelBase
     payroll_period_start: datetime
     payroll_period_end: datetime
     notes: Optional[str] = None
@@ -296,7 +295,6 @@ class ComputationUpdate(BaseModel):
     payroll_period_end: Optional[datetime] = None
     notes: Optional[str] = None
     status: Optional[str] = None
-    generated_by: Optional[ModelBase] = None
 
 class ComputationInDB(ModelInDBBase):
     company: ModelInDBBase

@@ -105,6 +105,21 @@ async def create_code(code_create: schemas.PayrollCodeCreate, company: models.Co
     except Exception as e:
         raise e
     
+async def create_computation(computation_create: schemas.ComputationCreate, company: models.Company):
+    try:
+        computation = models.Computation()
+        computation.company = company
+        computation.generated_by = models.User.objects.get(id=bson.ObjectId(computation_create.generated_by.id))
+        computation_create.__delattr__("generated_by")
+        for field, field_type in models.Computation._fields.items():
+            if hasattr(computation_create, field):
+                setattr(computation, field, getattr(computation_create, field))
+        computation.save()
+        computation.reload()
+        return computation
+    except Exception as e:
+        raise e
+    
 async def update_obj(model: models.BaseDocument, id: str, obj_in: schemas.BaseModel):
     try:
         obj = await get_obj_or_404(model, id)

@@ -194,7 +194,7 @@ async def test_payroll_concert(db):
         "status": "draft",
         "generated_by": {"id": str(models.User.objects.first().id)}
     })
-    computation = await crud.create_obj(models.Computation, computation_create)
+    computation = await crud.create_computation(computation_create, company=company)
     assert computation is not None
     assert computation.id is not None
     computation_component_create_basic_salary = schemas.ComputationComponentCreate(**{

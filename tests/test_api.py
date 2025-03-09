@@ -438,24 +438,23 @@ async def test_computations_api(mock_send_sms, mock_send_email,client,db):
     company_db = models.Company.objects.filter(name="Test Company1").first()
     user = models.User.objects.first()
     computation_create = {
-        "company": {"id": str(company_db.id)},
         "payroll_period_start": datetime.datetime(2025,3,1,0,0,0,0,tzinfo=datetime.timezone.utc).isoformat(),
         "payroll_period_end": datetime.datetime(2025,3,31,0,0,0,0,tzinfo=datetime.timezone.utc).isoformat(),
         "notes": "Test Computation",
         "status": "draft",
         "generated_by": {"id": str(user.id)}
     }
-    response = client.post("/payroll/computations/",json=computation_create,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.post(f"/payroll/companies/{str(company_db.id)}/computations/",json=computation_create,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 201
     assert response.json()["notes"] == "Test Computation"
     # get computations
-    response = client.get("/payroll/computations/",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/payroll/companies/{str(company_db.id)}/computations/",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert len(response.json()["data"]) >= 1
     # get single computation
     computation_db = models.Computation.objects.filter(notes="Test Computation").first()
     computation_id = computation_db.id
-    response = client.get(f"/payroll/computations/{str(computation_id)}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/payroll/companies/{str(company_db.id)}/computations/{str(computation_id)}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["notes"] == computation_db.notes
     # update computation
@@ -466,11 +465,11 @@ async def test_computations_api(mock_send_sms, mock_send_email,client,db):
         "status": "draft",
         "generated_by": {"id": str(user.id)}
     }
-    response = client.put(f"/payroll/computations/{str(computation_id)}",json=computation_update,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.put(f"/payroll/companies/{str(company_db.id)}/computations/{str(computation_id)}",json=computation_update,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["notes"] == "Test Computation 1"
     # get compensation template 
-    response = client.get(f"/payroll/computations/{str(computation_id)}/compensation-template",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/payroll/companies/{str(company_db.id)}/computations/{str(computation_id)}/compensation-template",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["url"] != None
     url = response.json()["url"]
@@ -496,7 +495,7 @@ async def test_computations_api(mock_send_sms, mock_send_email,client,db):
     df.to_excel(output, index=False)
     output.seek(0)
     response = client.post(
-        f"/payroll/computations/{str(computation_id)}/upload-compensation",
+        url=f"/payroll/companies/{str(company_db.id)}/computations/{str(computation_id)}/upload-compensation",
         files={"file": ("test_file.xlsx", output, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
         headers={"Authorization": f"Bearer {access_token}"}
     )
@@ -506,7 +505,7 @@ async def test_computations_api(mock_send_sms, mock_send_email,client,db):
     assert response.json()[0]["staff"]["id"] == str(staff_db.id)
     assert response.json()[0]["value"] == "500000.00"
     # run computation getting streaming response
-    response = client.post(f"/payroll/computations/{str(computation_id)}/run",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.post(f"/payroll/companies/{str(company_db.id)}/computations/{str(computation_id)}/run",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/x-ndjson"
     for line in response.iter_lines():
@@ -560,7 +559,7 @@ async def test_computations_api(mock_send_sms, mock_send_email,client,db):
     assert response.content != None
     assert response.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     # delete computation
-    response = client.delete(f"/payroll/computations/{str(computation_id)}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.delete(f"/payroll/companies/{str(company_db.id)}/computations/{str(computation_id)}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 204
     with pytest.raises(models.Computation.DoesNotExist):
         models.Computation.objects.get(id=computation_id)    
