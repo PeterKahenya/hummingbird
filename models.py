@@ -1,5 +1,6 @@
 from email.policy import default
 from enum import unique
+from pprint import pprint
 import shutil
 from fastapi import HTTPException
 from mongoengine import *
@@ -13,11 +14,10 @@ from config import logger
 import jwt
 
 # predefined formulae  
-def calculate_paye(taxable_income: float, paye_bands_monthly: List[Dict[str, Decimal]]) -> Decimal:
-    """
-        Calculate PAYE based on the taxable income and the PAYE bands
-    """
-    paye: Decimal = 0.00
+predefined_formulae = """
+from decimal import Decimal
+def calculate_paye(taxable_income: float) -> Decimal:
+    paye: Decimal = Decimal(0.00)
     for band in paye_bands_monthly:
         if taxable_income > band["upper"]:
             paye += (band["upper"] - band["lower"]) * (band["rate"] / 100)
@@ -26,11 +26,8 @@ def calculate_paye(taxable_income: float, paye_bands_monthly: List[Dict[str, Dec
             break
     return paye
 
-def calculate_nssf_contribution(gross_pay: float, nssf_bands_monthly: List[Dict[str, Decimal]]) -> Decimal:
-    """
-        Calculate NSSF contribution based on the gross pay and the NSSF bands
-    """
-    nssf_contribution: Decimal = 0.00
+def calculate_nssf_contribution(gross_pay: float) -> Decimal:
+    nssf_contribution: Decimal = Decimal(0.00)
     for band in nssf_bands_monthly:
         if gross_pay > band["upper"]:
             nssf_contribution += (band["upper"] - band["lower"]) * band["rate"] / 100
@@ -38,6 +35,7 @@ def calculate_nssf_contribution(gross_pay: float, nssf_bands_monthly: List[Dict[
             nssf_contribution += (gross_pay - band["lower"]) * band["rate"] / 100
             break
     return nssf_contribution
+"""
 
 class BaseDocument(Document):
     meta = {'abstract': True}
@@ -235,6 +233,7 @@ class User(BaseDocument):
         if mode == "email":
             if self.email_verification_code == code and self.email_verification_code_expiry > datetime.now():
                 self.is_verified = True
+                self.is_email_verified = True
                 self.is_active = True
                 self.email_verification_code = None
                 self.email_verification_code_expiry = None
@@ -245,7 +244,9 @@ class User(BaseDocument):
                 return False
         else:
             if self.phone_verification_code == code and self.phone_verification_code_expiry > datetime.now():
+                print("Phone verification code matched")
                 self.is_verified = True
+                self.is_phone_verified = True
                 self.is_active = True
                 self.phone_verification_code = None
                 self.phone_verification_code_expiry = None
@@ -533,8 +534,8 @@ class PayrollCode(BaseDocument):
     tags: List[str] = ListField(StringField(), required=False)
     value: Optional[float] = DecimalField(default=-1)
     formula: Optional[str] = StringField(default="")
-    order: int = IntField(default=0)
     effective_from: datetime = DateTimeField(default=datetime.now(tz=timezone.utc))
+    order: int = IntField(default=0, unique_with=['company', 'effective_from'])
     created_at: datetime = DateTimeField(default=datetime.now(tz=timezone.utc))
     updated_at: datetime = DateTimeField()
 
@@ -551,7 +552,8 @@ class PayrollCode(BaseDocument):
         'indexes': [
             'company',
             ('company', 'name'),
-            ('company', 'effective_from')
+            ('company', 'effective_from'),
+            {'fields': ('company', 'order', 'effective_from',), 'unique': True},
         ]
     }
 
@@ -563,9 +565,6 @@ class PayrollCode(BaseDocument):
     
     def save(self, *args: Any, **kwargs: Any) -> Any:
         self.updated_at = datetime.now(tz=timezone.utc)
-        # check if there is another component with the same order and company variable and effective from
-        if PayrollCode.objects(company=self.company, order=self.order, effective_from=self.effective_from).count() > 0:
-            raise ValidationError("Another Payroll Code with the same order and effective date exists")
         return super(PayrollCode, self).save(*args, **kwargs)
 
 class Computation(BaseDocument):
@@ -621,8 +620,9 @@ class Computation(BaseDocument):
             params: Dict[str, float] = {}
             nssf_bands_monthly: List[Dict[str, Decimal]] = Band.objects(band_type='NSSF', band_frequency='monthly', period_start__lte=self.payroll_period_start, period_end__gte=self.payroll_period_start).order_by('lower')
             paye_bands_monthly: List[Dict[str, Decimal]] = Band.objects(band_type='PAYE', band_frequency='monthly', period_start__lte=self.payroll_period_start, period_end__gte=self.payroll_period_start).order_by('lower')
-            params['nssf_bands_monthly'] = [band.to_dict() for band in nssf_bands_monthly]
-            params['paye_bands_monthly'] = [band.to_dict() for band in paye_bands_monthly]
+            params['nssf_bands_monthly'] = [{"lower": band.lower, "upper": band.upper, "rate": band.rate} for band in nssf_bands_monthly]
+            params['paye_bands_monthly'] = [{"lower": band.lower, "upper": band.upper, "rate": band.rate} for band in paye_bands_monthly]
+            exec(predefined_formulae, params)
             payroll_codes: List[PayrollCode] = PayrollCode.objects(company=self.company, effective_from__lte=self.payroll_period_start).order_by('order')
             for payroll_code in payroll_codes:
                 computation_component = ComputationComponent.objects(computation=self, payroll_component=payroll_code, staff=employee).first()

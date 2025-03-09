@@ -1,4 +1,5 @@
 import mongoengine
+from requests import get
 import models
 import schemas
 import bson
@@ -80,12 +81,12 @@ async def update_obj(model: models.BaseDocument, id: str, obj_in: schemas.BaseMo
     try:
         obj = await get_obj_or_404(model, id)
         for field, field_type in model._fields.items():
-            if isinstance(field_type, mongoengine.ReferenceField):
+            if isinstance(field_type, mongoengine.ReferenceField) and hasattr(obj_in, field) and getattr(obj_in, field):
                 if hasattr(obj_in, field):
                     setattr(obj, field, model._fields[field].document_type.objects.get(id=bson.ObjectId(getattr(obj_in, field).id)))
                     obj.save()
                     obj_in.__delattr__(field)
-            elif isinstance(field_type, mongoengine.ListField) and isinstance(field_type.field, mongoengine.ReferenceField):
+            elif isinstance(field_type, mongoengine.ListField) and isinstance(field_type.field, mongoengine.ReferenceField) and hasattr(obj_in, field):
                 if hasattr(obj_in, field):
                     setattr(obj, field, [model._fields[field].field.document_type.objects.get(id=bson.ObjectId(item.id)) for item in getattr(obj_in, field)])
                     obj.save()

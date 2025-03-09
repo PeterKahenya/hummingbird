@@ -1,5 +1,5 @@
 services:
-  mongodb:
+  hummingdb:
     image: mongo:latest
     restart: always
     env_file: ".env"
@@ -10,6 +10,30 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD}
     volumes:
       - mongodb_data:/data/db
+    networks:
+      - app_network
+  hummingservice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/app
+    env_file: ".env"
+    ports:
+      - 9011:${SERVICE_PORT}
+    command: sh -c "chmod +x /app/entrypoint.sh && sh /app/entrypoint.sh"
+    environment:
+      - MONGODB_HOST=${MONGODB_HOST}
+      - MONGODB_PORT=${MONGODB_PORT}
+      - MONGODB_USER=${MONGODB_USER}
+      - MONGODB_PASSWORD=${MONGODB_PASSWORD}
+      - MONGODB_DB=${MONGODB_DB}
+      - SERVICE_PORT=${SERVICE_PORT}
+      - SERVICE_HOST=${SERVICE_HOST}
+      - SERVICE_WORKERS=${SERVICE_WORKERS}
+      - SERVICE_RELOAD=${SERVICE_RELOAD}
+    depends_on:
+      - hummingdb
     networks:
       - app_network
 

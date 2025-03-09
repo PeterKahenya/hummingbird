@@ -24,7 +24,7 @@ class AppSettings(BaseSettings):
 
 settings = AppSettings()
 
-DB_URL = f"mongodb://{settings.mongodb_user}:{settings.mongodb_password}@{settings.mongodb_host}:{settings.mongodb_port}/{settings.mongodb_database}"
+DB_URL = f"mongodb://{settings.mongodb_user}:{settings.mongodb_password}@{settings.mongodb_host}:{settings.mongodb_port}/{settings.mongodb_database}?authSource=admin"
 DEFAULT_CONTENT_CLASSES = ["users", "roles", "permissions", "contenttypes", "clientapps", "bands", "companies", "staff", "payrollcodes", "computations", "computationcomponents"]
 DEFAULT_PERMISSIONS_CLASSES = ["create","read","update","delete"]
 

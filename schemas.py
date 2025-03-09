@@ -46,7 +46,7 @@ class PermissionInDB(ModelInDBBase):
 class RoleCreate(BaseModel):
     name: str
     description: str
-    permissions: List[ModelInDBBase] | None = []
+    permissions: List[ModelBase] | None = []
 
 class RoleUpdate(BaseModel):
     name: Optional[str] = None

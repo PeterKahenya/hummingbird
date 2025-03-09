@@ -1,2 +1,5 @@
 env/
 .env
+.coverage
+"templates/Test Company 1/"
+"templates/Test Company/"

@@ -1,0 +1,51 @@
+name: Hummingbird Tests
+run-name: Hummingbird Tests
+
+on:
+    workflow_call:
+    workflow_dispatch:
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+env:
+    SUPERUSER_PHONE:  "1234567890"
+    SUPERUSER_PASSWORD: "password"
+    SUPERUSER_EMAIL: "test@example.ke"
+    MONGODB_USER: "test"
+    MONGODB_PASSWORD: "password"
+    MONGODB_HOST: "localhost"
+    MONGODB_PORT: "27017"
+    MONGODB_DATABASE: "test"
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: .
+        strategy:
+            matrix:
+                python-version: ["3.10"]
+        steps:
+            -   name: Checkout code
+                uses: actions/checkout@v2
+            -   name: Set up Python ${{ matrix.python-version }}
+                uses: actions/setup-python@v3
+                with:
+                    python-version: ${{ matrix.python-version }}
+            -   name: Install wkhtmltopdf
+                run: |
+                    sudo apt-get install -y wkhtmltopdf
+
+            - name: Install dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  pip install -r requirements.txt
+
+            - name: Run tests
+              run: |
+                coverage run -m pytest -p no:cacheprovider
+                coverage report -m
