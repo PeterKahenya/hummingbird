@@ -18,10 +18,9 @@ from depends import get_db
 import os
 import collections
 from openpyxl import Workbook, load_workbook
+from pypdf import PdfReader, PdfWriter
 
 router = APIRouter(dependencies=[Depends(get_db)])
-
-from PyPDF2 import PdfReader, PdfWriter
 
 def add_password_to_pdf(input_pdf, output_pdf, password):
     reader = PdfReader(input_pdf)
@@ -37,9 +36,6 @@ def add_password_to_pdf(input_pdf, output_pdf, password):
     # Save the protected PDF
     with open(output_pdf, "wb") as f:
         writer.write(f)
-
-    print(f"Password-protected PDF saved as {output_pdf}")
-
 
 def format_currency(value):
     """Formats numbers as currency with two decimal places."""

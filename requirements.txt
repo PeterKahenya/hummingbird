@@ -15,4 +15,4 @@ coverage==7.6.12
 pyJWT==2.10.1
 passlib[bcrypt]==1.7.4
 pandas==2.2.3
-pyPDF2
+pypdf==5.3.1
