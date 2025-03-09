@@ -3,11 +3,11 @@ import logging
 from honeybadger.contrib.logger import HoneybadgerHandler
 
 class AppSettings(BaseSettings):
-    mongodb_user: str 
-    mongodb_password: str
-    mongodb_host: str
-    mongodb_port: str
-    mongodb_database: str
+    mongodb_user: str = "test"
+    mongodb_password: str = "test"
+    mongodb_host: str = "localhost"
+    mongodb_port: str = "27017"
+    mongodb_database: str = "test"
     honeybadger_api_key: str = "honeybadger_api_key"
     jwt_secret_key: str = "c6e5"
     jwt_algorithm: str = "HS256"
@@ -18,9 +18,9 @@ class AppSettings(BaseSettings):
     smsleopard_base_url: str = "https://smsleopard.com/api/v1"
     smsleopard_api_key: str = "smsleopard_api_key"
     smsleopard_api_secret: str = "sms"
-    superuser_email: str
-    superuser_phone: str
-    superuser_password: str
+    superuser_email: str = "test@test.com"
+    superuser_phone: str = "254700000000"
+    superuser_password: str = "password"
 
 settings = AppSettings()
 

@@ -77,6 +77,49 @@ async def create_obj(model: models.BaseDocument, obj_in: schemas.BaseModel):
     except Exception as e:
         raise e
     
+async def create_staff(staff_create: schemas.StaffCreate, company: models.Company):
+    try:
+        staff = models.Staff()
+        staff.company = company
+        staff.user = models.User.objects.get(id=bson.ObjectId(staff_create.user.id))
+        staff_create.__delattr__("user")
+        for field, field_type in models.Staff._fields.items():
+            if hasattr(staff_create, field):
+                setattr(staff, field, getattr(staff_create, field))
+        staff.save()
+        staff.reload()
+        return staff
+    except Exception as e:
+        raise e
+
+async def create_code(code_create: schemas.PayrollCodeCreate, company: models.Company):
+    try:
+        code = models.PayrollCode()
+        code.company = company
+        for field, field_type in models.PayrollCode._fields.items():
+            if hasattr(code_create, field):
+                setattr(code, field, getattr(code_create, field))
+        code.save()
+        code.reload()
+        return code
+    except Exception as e:
+        raise e
+    
+async def create_computation(computation_create: schemas.ComputationCreate, company: models.Company):
+    try:
+        computation = models.Computation()
+        computation.company = company
+        computation.generated_by = models.User.objects.get(id=bson.ObjectId(computation_create.generated_by.id))
+        computation_create.__delattr__("generated_by")
+        for field, field_type in models.Computation._fields.items():
+            if hasattr(computation_create, field):
+                setattr(computation, field, getattr(computation_create, field))
+        computation.save()
+        computation.reload()
+        return computation
+    except Exception as e:
+        raise e
+    
 async def update_obj(model: models.BaseDocument, id: str, obj_in: schemas.BaseModel):
     try:
         obj = await get_obj_or_404(model, id)
@@ -116,6 +159,7 @@ async def paginate(
         ) -> schemas.ListResponse:
     try:
         if q:
+            # TODO: Search needs filtering to handle searches within constrained domains like staff in a company
             data = await search_objs(model, q)
         elif params and len(params) > 0:
             data = await filter_objs(model=model,params=params,sort_by=sort_by)

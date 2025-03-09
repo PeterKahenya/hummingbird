@@ -182,7 +182,6 @@ class CompanyInDB(ModelInDBBase):
 
 class StaffCreate(BaseModel):
     user: ModelBase
-    company: ModelBase
     first_name: str
     last_name: str
     job_title: str
@@ -251,7 +250,6 @@ class StaffInDB(ModelInDBBase):
     bank_branch: Optional[str] = None
 
 class PayrollCodeCreate(BaseModel):
-    company: ModelBase
     name: str
     description: Optional[str] = None
     variable: str
@@ -286,7 +284,6 @@ class PayrollCodeInDB(ModelInDBBase):
     effective_from: datetime
 
 class ComputationCreate(BaseModel):
-    company: ModelBase
     payroll_period_start: datetime
     payroll_period_end: datetime
     notes: Optional[str] = None
@@ -298,7 +295,6 @@ class ComputationUpdate(BaseModel):
     payroll_period_end: Optional[datetime] = None
     notes: Optional[str] = None
     status: Optional[str] = None
-    generated_by: Optional[ModelBase] = None
 
 class ComputationInDB(ModelInDBBase):
     company: ModelInDBBase

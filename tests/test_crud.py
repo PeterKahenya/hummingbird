@@ -150,7 +150,6 @@ async def test_payroll_concert(db):
     company = await crud.create_obj(models.Company, company_create)
     staff_create = schemas.StaffCreate(**{
         "user": {"id": str(models.User.objects.first().id)},
-        "company": {"id": str(company.id)},
         "first_name": fake.first_name(),
         "last_name": fake.last_name(),
         "job_title": fake.job(),
@@ -159,7 +158,7 @@ async def test_payroll_concert(db):
         "staff_number": "auth",
         "national_id_number": "auth"
     })
-    staff = await crud.create_obj(models.Staff, staff_create)
+    staff = await crud.create_staff(staff_create, company)
     assert staff is not None
     payroll_code_create_basic_salary = schemas.PayrollCodeCreate(**{
         "company": {"id": str(company.id)},
@@ -173,7 +172,7 @@ async def test_payroll_concert(db):
         "order": 1,
         "effective_from": "2021-01-01T00:00:00"
     })
-    payroll_code_basic_salary = await crud.create_obj(models.PayrollCode, payroll_code_create_basic_salary)
+    payroll_code_basic_salary = await crud.create_code(payroll_code_create_basic_salary, company=company)
     payroll_code_create_tax = schemas.PayrollCodeCreate(**{
         "company": {"id": str(company.id)},
         "name": "Tax",
@@ -186,7 +185,7 @@ async def test_payroll_concert(db):
         "order": 2,
         "effective_from": "2021-01-01T00:00:00"
     })
-    payroll_code_tax = await crud.create_obj(models.PayrollCode, payroll_code_create_tax)
+    payroll_code_tax = await crud.create_code(payroll_code_create_tax, company=company)
     computation_create = schemas.ComputationCreate(**{
         "company": {"id": str(company.id)},
         "notes": "Test computation",
@@ -195,7 +194,7 @@ async def test_payroll_concert(db):
         "status": "draft",
         "generated_by": {"id": str(models.User.objects.first().id)}
     })
-    computation = await crud.create_obj(models.Computation, computation_create)
+    computation = await crud.create_computation(computation_create, company=company)
     assert computation is not None
     assert computation.id is not None
     computation_component_create_basic_salary = schemas.ComputationComponentCreate(**{

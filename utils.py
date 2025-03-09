@@ -7,6 +7,7 @@ import secrets
 import string
 import nanoid
 from pydantic_settings import BaseSettings
+from pypdf import PdfReader, PdfWriter
 import models
 import config
 from config import settings
@@ -193,7 +194,15 @@ async def smsleopard_send_sms(phone: str, message: str) -> bool:
             raise Exception(f"{response.status_code} - {response.text}")
     except Exception as e:
         raise e
-    
+
+def add_password_to_pdf(input_pdf, output_pdf, password):
+    reader = PdfReader(input_pdf)
+    writer = PdfWriter()
+    for page in reader.pages:
+        writer.add_page(page)
+    writer.encrypt(password)
+    with open(output_pdf, "wb") as f:
+        writer.write(f)
 
 if __name__ == '__main__':
     try:
