@@ -45,7 +45,7 @@ async def authenticate(client, db):
     assert response.json()["access_token"] != None
     access_token = response.json()["access_token"]
     # test access profile of authenticated user
-    response = client.get("/auth/me",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get("/users/me",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["email"] == user.email
     return access_token
@@ -58,12 +58,12 @@ async def test_permissions_api(mock_send_sms, mock_send_email, client,db):
     mock_send_email.return_value = True
     access_token: str = await authenticate(client,db)
     # test get permissions
-    response = client.get("/auth/permissions/",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get("/permissions/",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert len(response.json()["data"]) >= 1
     # test get single permission
     permission_id = str(models.Permission.objects.first().id)
-    response = client.get(f"/auth/permissions/{permission_id}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/permissions/{permission_id}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["name"] != None
 
@@ -81,17 +81,17 @@ async def test_roles_api(mock_send_sms, mock_send_email,client,db):
         "name": "EndUser",
         "description": "End User Role"
     }
-    response = client.post("/auth/roles/", json=role_data,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.post("/roles/", json=role_data,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 201
     assert response.json()["name"] == "EndUser"
     # get roles
-    response = client.get("/auth/roles/",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get("/roles/",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert len(response.json()["data"]) >= 1
     # get single role
     role_db = models.Role.objects.filter(name="EndUser").first()
     role_id = str(role_db.id)
-    response = client.get(f"/auth/roles/{role_id}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/roles/{role_id}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["name"] == role_db.name
     # update role
@@ -100,13 +100,13 @@ async def test_roles_api(mock_send_sms, mock_send_email,client,db):
         "name": "EndUser1",
         "permissions": [{"id":str(p.id)} for p in permissions]
     }
-    response = client.put(f"/auth/roles/{role_id}",json=role_data,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.put(f"/roles/{role_id}",json=role_data,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["name"] == "EndUser1"
     assert len(response.json()["permissions"]) == 3
     assert response.json()["permissions"][0]["name"] == permissions[0].name
     # delete role
-    response = client.delete(f"/auth/roles/{role_id}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.delete(f"/roles/{role_id}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 204
     with pytest.raises(models.Role.DoesNotExist):
         models.Role.objects.get(id=role_id)
@@ -126,17 +126,17 @@ async def test_users_api(mock_send_sms, mock_send_email,client,db):
         "phone": fake.unique.phone_number()[0:11],
         "password": fake.password()
     }
-    response = client.post("/auth/users/",json=user_data,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.post("/users/",json=user_data,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 201
     assert response.json()["phone"] == user_data["phone"]
     # get users
-    response = client.get("/auth/users/",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get("/users/",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert len(response.json()["data"]) >= 1
     # get single user
     user_db = models.User.objects.first()
     user_id = str(user_db.id)
-    response = client.get(f"/auth/users/{user_id}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/users/{user_id}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["phone"] == user_db.phone
     # update user
@@ -148,12 +148,12 @@ async def test_users_api(mock_send_sms, mock_send_email,client,db):
         "phone": fake.unique.phone_number()[0:11],
         "roles": [{"id":str(r.id)} for r in roles]
     }
-    response = client.put(f"/auth/users/{user_id}",json=update_data,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.put(f"/users/{user_id}",json=update_data,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["name"] == update_data["name"]
     assert response.json()["phone"] == update_data["phone"]
     # delete user
-    response = client.delete(f"/auth/users/{user_id}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.delete(f"/users/{user_id}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 204
     with pytest.raises(models.User.DoesNotExist):
         models.User.objects.get(id=user_id)
@@ -173,17 +173,17 @@ async def test_clientapps_api(mock_send_sms, mock_send_email,client,db):
         "description": "Test App Description",
         "user": {"id": str(user_db.id)}
     }
-    response = client.post("/auth/apps/",json=clientapp_data,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.post("/apps/",json=clientapp_data,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 201
     assert response.json()["name"] == "Test App"
     # get clientapps
-    response = client.get("/auth/apps/",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get("/apps/",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert len(response.json()["data"]) >= 1
     # get single clientapp
     clientapp_db = models.ClientApp.objects.filter(name="Test App").first()
     clientapp_id = clientapp_db.id
-    response = client.get(f"/auth/apps/{str(clientapp_id)}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/apps/{str(clientapp_id)}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["name"] == clientapp_db.name
     # update clientapp
@@ -192,11 +192,11 @@ async def test_clientapps_api(mock_send_sms, mock_send_email,client,db):
         "description": "Test App Description 1",
         "user": {"id": str(user_db.id)} 
     }
-    response = client.put(f"/auth/apps/{str(clientapp_id)}",json=update_data,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.put(f"/apps/{str(clientapp_id)}",json=update_data,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["name"] == "Test App 1"
     # delete clientapp
-    response = client.delete(f"/auth/apps/{str(clientapp_id)}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.delete(f"/apps/{str(clientapp_id)}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 204
     with pytest.raises(models.ClientApp.DoesNotExist):
         models.ClientApp.objects.get(id=clientapp_id)
@@ -222,17 +222,17 @@ async def test_companies_api(mock_send_sms, mock_send_email,client,db):
         "contact_phone": fake.unique.phone_number()[0:11],
         "address": fake.address()
     }
-    response = client.post("/payroll/companies/",json=company_data,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.post("/companies/",json=company_data,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 201
     assert response.json()["name"] == "Test Company"
     # get companies
-    response = client.get("/payroll/companies/",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get("/companies/",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert len(response.json()["data"]) >= 1
     # get single company
     company_db = models.Company.objects.filter(name="Test Company").first()
     company_id = company_db.id
-    response = client.get(f"/payroll/companies/{str(company_id)}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/companies/{str(company_id)}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["name"] == company_db.name
     # update company
@@ -240,11 +240,11 @@ async def test_companies_api(mock_send_sms, mock_send_email,client,db):
         "name": "Test Company 1",
         "description": "Test Company Description 1"
     }
-    response = client.put(f"/payroll/companies/{str(company_id)}",json=update_data,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.put(f"/companies/{str(company_id)}",json=update_data,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["name"] == "Test Company 1"
     # delete company
-    response = client.delete(f"/payroll/companies/{str(company_id)}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.delete(f"/companies/{str(company_id)}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 204
     with pytest.raises(models.Company.DoesNotExist):
         models.Company.objects.get(id=company_id)
@@ -278,17 +278,17 @@ async def test_staff_api(mock_send_sms, mock_send_email,client,db):
         "is_active": True,
         "joined_on": fake.date_time().isoformat()
     }
-    response = client.post(f"/payroll/companies/{str(company.id)}/staff/",json=staff_create,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.post(f"/companies/{str(company.id)}/staff/",json=staff_create,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 201
     assert response.json()["first_name"] == staff_create["first_name"]
     # get staff
-    response = client.get(f"/payroll/companies/{str(company.id)}/staff/",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/companies/{str(company.id)}/staff/",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert len(response.json()["data"]) >= 1
     # get single staff
     staff_db = models.Staff.objects.filter(first_name=staff_create["first_name"]).first()
     staff_id = staff_db.id
-    response = client.get(f"/payroll/companies/{str(company.id)}/staff/{str(staff_id)}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/companies/{str(company.id)}/staff/{str(staff_id)}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["first_name"] == staff_db.first_name
     # update staff
@@ -309,11 +309,11 @@ async def test_staff_api(mock_send_sms, mock_send_email,client,db):
         "is_active": True,
         "joined_on": fake.date_time().isoformat()
     }
-    response = client.put(f"/payroll/companies/{str(company.id)}/staff/{str(staff_id)}",json=update_data,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.put(f"/companies/{str(company.id)}/staff/{str(staff_id)}",json=update_data,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["first_name"] == update_data["first_name"]
     # delete staff
-    response = client.delete(f"/payroll/companies/{str(company.id)}/staff/{str(staff_id)}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.delete(f"/companies/{str(company.id)}/staff/{str(staff_id)}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 204
     with pytest.raises(models.Staff.DoesNotExist):
         models.Staff.objects.get(id=staff_id)
@@ -336,17 +336,17 @@ async def test_bands_api(mock_send_sms, mock_send_email,client,db):
         "upper": 24000,
         "rate": 0.1
     }
-    response = client.post("/payroll/bands/",json=band_create,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.post("/bands/",json=band_create,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 201
     assert response.json()["band_type"] == "PAYE"
     # get bands
-    response = client.get("/payroll/bands/",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get("/bands/",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert len(response.json()["data"]) >= 1
     # get single band
     band_db = models.Band.objects.filter(upper=24000).first()
     band_id = band_db.id
-    response = client.get(f"/payroll/bands/{str(band_id)}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/bands/{str(band_id)}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["lower"] == str(band_db.lower)
     assert response.json()["upper"] == str(band_db.upper)
@@ -360,11 +360,11 @@ async def test_bands_api(mock_send_sms, mock_send_email,client,db):
         "upper": 24000,
         "rate": 0.1
     }
-    response = client.put(f"/payroll/bands/{str(band_id)}",json=band_update,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.put(f"/bands/{str(band_id)}",json=band_update,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["band_type"] == "NSSF"
     # delete band
-    response = client.delete(f"/payroll/bands/{str(band_id)}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.delete(f"/bands/{str(band_id)}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 204
     with pytest.raises(models.Band.DoesNotExist):
         models.Band.objects.get(id=band_id)
@@ -391,17 +391,17 @@ async def test_payrollcodes_api(mock_send_sms, mock_send_email,client,db):
         "order": 1,
         "effective_from": fake.date_time_this_year().isoformat()
     }
-    response = client.post(f"/payroll/companies/{str(company.id)}/codes/",json=payrollcode_create,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.post(f"/companies/{str(company.id)}/codes/",json=payrollcode_create,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 201
     assert response.json()["name"] == "BASE"
     # get payrollcodes
-    response = client.get(f"/payroll/companies/{str(company.id)}/codes/",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/companies/{str(company.id)}/codes/",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert len(response.json()["data"]) >= 1
     # get single payrollcode
     payrollcode_db = models.PayrollCode.objects.filter(name="BASE").first()
     payrollcode_id = payrollcode_db.id
-    response = client.get(f"/payroll/companies/{str(company.id)}/codes/{str(payrollcode_id)}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/companies/{str(company.id)}/codes/{str(payrollcode_id)}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["name"] == payrollcode_db.name
     # update payrollcode
@@ -416,11 +416,11 @@ async def test_payrollcodes_api(mock_send_sms, mock_send_email,client,db):
         "order": 1,
         "effective_from": fake.date_time_this_year().isoformat()
     }
-    response = client.put(f"/payroll/companies/{str(company.id)}/codes/{str(payrollcode_id)}",json=payrollcode_update,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.put(f"/companies/{str(company.id)}/codes/{str(payrollcode_id)}",json=payrollcode_update,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["name"] == "BASE2"
     # delete payrollcode
-    response = client.delete(f"/payroll/companies/{str(company.id)}/codes/{str(payrollcode_id)}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.delete(f"/companies/{str(company.id)}/codes/{str(payrollcode_id)}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 204
     with pytest.raises(models.PayrollCode.DoesNotExist):
         models.PayrollCode.objects.get(id=payrollcode_id)
@@ -444,17 +444,17 @@ async def test_computations_api(mock_send_sms, mock_send_email,client,db):
         "status": "draft",
         "generated_by": {"id": str(user.id)}
     }
-    response = client.post(f"/payroll/companies/{str(company_db.id)}/computations/",json=computation_create,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.post(f"/companies/{str(company_db.id)}/computations/",json=computation_create,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 201
     assert response.json()["notes"] == "Test Computation"
     # get computations
-    response = client.get(f"/payroll/companies/{str(company_db.id)}/computations/",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/companies/{str(company_db.id)}/computations/",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert len(response.json()["data"]) >= 1
     # get single computation
     computation_db = models.Computation.objects.filter(notes="Test Computation").first()
     computation_id = computation_db.id
-    response = client.get(f"/payroll/companies/{str(company_db.id)}/computations/{str(computation_id)}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/companies/{str(company_db.id)}/computations/{str(computation_id)}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["notes"] == computation_db.notes
     # update computation
@@ -465,11 +465,11 @@ async def test_computations_api(mock_send_sms, mock_send_email,client,db):
         "status": "draft",
         "generated_by": {"id": str(user.id)}
     }
-    response = client.put(f"/payroll/companies/{str(company_db.id)}/computations/{str(computation_id)}",json=computation_update,headers={"Authorization": f"Bearer {access_token}"})
+    response = client.put(f"/companies/{str(company_db.id)}/computations/{str(computation_id)}",json=computation_update,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["notes"] == "Test Computation 1"
     # get compensation template 
-    response = client.get(f"/payroll/companies/{str(company_db.id)}/computations/{str(computation_id)}/compensation-template",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.get(f"/companies/{str(company_db.id)}/computations/{str(computation_id)}/compensation-template",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["url"] != None
     url = response.json()["url"]
@@ -495,7 +495,7 @@ async def test_computations_api(mock_send_sms, mock_send_email,client,db):
     df.to_excel(output, index=False)
     output.seek(0)
     response = client.post(
-        url=f"/payroll/companies/{str(company_db.id)}/computations/{str(computation_id)}/upload-compensation",
+        url=f"/companies/{str(company_db.id)}/computations/{str(computation_id)}/upload-compensation",
         files={"file": ("test_file.xlsx", output, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
         headers={"Authorization": f"Bearer {access_token}"}
     )
@@ -505,7 +505,7 @@ async def test_computations_api(mock_send_sms, mock_send_email,client,db):
     assert response.json()[0]["staff"]["id"] == str(staff_db.id)
     assert response.json()[0]["value"] == "500000.00"
     # run computation getting streaming response
-    response = client.post(f"/payroll/companies/{str(company_db.id)}/computations/{str(computation_id)}/run",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.post(f"/companies/{str(company_db.id)}/computations/{str(computation_id)}/run",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/x-ndjson"
     for line in response.iter_lines():
@@ -516,7 +516,7 @@ async def test_computations_api(mock_send_sms, mock_send_email,client,db):
         assert data["payroll"]["tax"] == 50_000
 
     # generate payslips
-    response = client.post(f"/reports/companies/{str(company_db.id)}/computations/{str(computation_id)}/generate-payslips",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.post(f"/companies/{str(company_db.id)}/computations/{str(computation_id)}/payslips/generate",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/x-ndjson"
     for line in response.iter_lines():
@@ -535,7 +535,7 @@ async def test_computations_api(mock_send_sms, mock_send_email,client,db):
     period_start = datetime.datetime(year,1,1,0,0,0,0,tzinfo=datetime.timezone.utc)
     period_end = datetime.datetime(year,12,31,0,0,0,0,tzinfo=datetime.timezone.utc)
     period_filter = f"period_start={period_start.strftime('%Y-%m-%d %H:%M:%S')}&period_end={period_end.strftime('%Y-%m-%d %H:%M:%S')}" 
-    response = client.post(f"/reports/companies/{str(computation_db.company.id)}/generate-p9as?{period_filter}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.post(f"/companies/{str(computation_db.company.id)}/p9as/generate?{period_filter}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/x-ndjson"
     for line in response.iter_lines():
@@ -548,18 +548,19 @@ async def test_computations_api(mock_send_sms, mock_send_email,client,db):
     assert response.status_code == 200
     assert response.content != None
     assert response.headers["content-type"] == "application/pdf"
-    # generate company summary
-    response = client.post(f"/reports/companies/{str(company_db.id)}/computations/{str(computation_id)}/generate-payroll-report",headers={"Authorization": f"Bearer {access_token}"})
+    # generate payroll report
+    response = client.post(f"/companies/{str(company_db.id)}/computations/{str(computation_id)}/report/generate",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.json()["url"] != None
-    # download company summary
+    # download payroll report
     company_summary_url = response.json()["url"]
+    print(company_summary_url)
     response = client.get(company_summary_url,headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 200
     assert response.content != None
     assert response.headers["content-type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     # delete computation
-    response = client.delete(f"/payroll/companies/{str(company_db.id)}/computations/{str(computation_id)}",headers={"Authorization": f"Bearer {access_token}"})
+    response = client.delete(f"/companies/{str(company_db.id)}/computations/{str(computation_id)}",headers={"Authorization": f"Bearer {access_token}"})
     assert response.status_code == 204
     with pytest.raises(models.Computation.DoesNotExist):
         models.Computation.objects.get(id=computation_id)    

@@ -198,7 +198,7 @@ def db():
 
 @pytest.fixture(scope="session")
 def client():
-    from api import app
+    from main import app
     from depends import get_db
     def get_test_db():
         try:
