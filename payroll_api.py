@@ -114,8 +114,7 @@ async def delete_company(
         )
 async def create_staff(
             staff: schemas.StaffCreate,
-            user: models.User = Depends(authorize(perm="create_staff")),
-            db: Any = Depends(get_db)
+            _: models.User = Depends(authorize(perm="create_staff")),
         ):
     try:
         user = await crud.get_obj_or_404(model=models.User, id=staff.user.id)
